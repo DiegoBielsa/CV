@@ -1,0 +1,20 @@
+calculate the translation matrix
+
+
+compose a matrix Pc1 which project 3d points to 2d points
+
+Pc1 = K * Canonical * c1Tw
+
+To calculate a line with two points ==> Lab = Xa x Xb
+
+To calculate the point where 2 lines meet ==> P12 = L1 x L2
+
+To compute the vector in 3D defined by two points ==> Vector_AB = (X_B - X_A, 0) ==> 4 rows
+
+With SVD we will get the plane we will have to solve a linear system of homogeneous equation, with SVD (Singular values descomposition)
+
+We want to get the kernel in order to solve linear ecuations.
+
+Ax=0 ==> solution = svd(A)
+
+LtX                                                                                                    
