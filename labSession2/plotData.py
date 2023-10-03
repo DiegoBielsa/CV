@@ -113,6 +113,40 @@ def drawRefSystem(ax, T_w_c, strStyle, nameStr):
     draw3DLine(ax, T_w_c[0:3, 3:4], T_w_c[0:3, 3:4] + T_w_c[0:3, 1:2], strStyle, 'g', 1)
     draw3DLine(ax, T_w_c[0:3, 3:4], T_w_c[0:3, 3:4] + T_w_c[0:3, 2:3], strStyle, 'b', 1)
     ax.text(np.squeeze( T_w_c[0, 3]+0.1), np.squeeze( T_w_c[1, 3]+0.1), np.squeeze( T_w_c[2, 3]+0.1), nameStr)
+    
+def Capture_Event(event, x, y, flags, params):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        x_0 = np.array([x, y]);
+        
+        
+    return x_0;
+  
+        
+    
+def drawEipolarLine (): # Draw epipolar line of a clicked point
+    
+    F_21 = np.loadtxt('F_21_test.txt')
+    
+    
+    img = cv2.imread('image1.png', 1)
+    cv2.imshow('Image 1', img)
+    cv2.setMouseCallback('Image 1', Capture_Event)
+    
+    #l_1 = np.cross(F, x_0);
+
+    plt.figure(4)
+    plt.imshow(img2, cmap='gray', vmin=0, vmax=255)
+    plt.title('Image 2')
+    plt.draw()  # We update the figure display
+    print('Click in the image to continue...')
+    plt.waitforbuttonpress()
+    
+
+	
+    
+    
+    
+    return;
 
 if __name__ == '__main__':
     np.set_printoptions(precision=4,linewidth=1024,suppress=True)
@@ -121,14 +155,55 @@ if __name__ == '__main__':
     # Load ground truth
     T_w_c1 = np.loadtxt('T_w_c1.txt')
     T_w_c2 = np.loadtxt('T_w_c2.txt')
+    
+    T_c1_w = np.linalg.inv(T_w_c1);
+    T_c2_w = np.linalg.inv(T_w_c2);
 
     K_c = np.loadtxt('K_c.txt')
     X_w = np.loadtxt('X_w.txt')
+    
+    # Canonical perspective projection matrix
+    P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
+    
+    # Projection matrixes
+    P_c1 = K_c @ P_canonical @ T_c1_w;
+    P_c2 = K_c @ P_canonical @ T_c2_w;
 
     x1 = np.loadtxt('x1Data.txt')
     x2 = np.loadtxt('x2Data.txt')
+        
+    A = np.ones([4,4]);
+    
+    rows, columns = x1.shape;
+    X_own_w = np.ones([columns, 4]);
+    
+    for i in range(columns):
+        A[0][0] = P_c1[2][0] * x1[0][i] - P_c1[0][0];
+        A[0][1] = P_c1[2][1] * x1[0][i] - P_c1[0][1];
+        A[0][2] = P_c1[2][2] * x1[0][i] - P_c1[0][2];
+        A[0][3] = P_c1[2][3] * x1[0][i] - P_c1[0][3];
+        
+        A[1][0] = P_c1[2][0] * x1[1][i] - P_c1[1][0];
+        A[1][1] = P_c1[2][1] * x1[1][i] - P_c1[1][1];
+        A[1][2] = P_c1[2][2] * x1[1][i] - P_c1[1][2];
+        A[1][3] = P_c1[2][3] * x1[1][i] - P_c1[1][3];
+        
+        A[2][0] = P_c2[2][0] * x2[0][i] - P_c2[0][0];
+        A[2][1] = P_c2[2][1] * x2[0][i] - P_c2[0][1];
+        A[2][2] = P_c2[2][2] * x2[0][i] - P_c2[0][2];
+        A[2][3] = P_c2[2][3] * x2[0][i] - P_c2[0][3];
+        
+        A[3][0] = P_c2[2][0] * x2[1][i] - P_c2[1][0];
+        A[3][1] = P_c2[2][1] * x2[1][i] - P_c2[1][1];
+        A[3][2] = P_c2[2][2] * x2[1][i] - P_c2[1][2];
+        A[3][3] = P_c2[2][3] * x2[1][i] - P_c2[1][3];
+        
+        u, s, vh = np.linalg.svd(A);
+        point = vh[-1, :];
+        point_n = point / point[3];
+        X_own_w[i, :] = point_n;
 
-
+    X_own_w = X_own_w.T;
     ##Plot the 3D cameras and the 3D points
     fig3D = plt.figure(3)
 
@@ -174,3 +249,18 @@ if __name__ == '__main__':
     plt.draw()  # We update the figure display
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
+    
+    #drawEipolarLine();
+    
+    # Calculate E and F
+    
+    T_c2_c1 = T_c2_w @ T_w_c1;
+    
+    R_c2_c1 = T_c2_c1[:3, :3];
+    Transl_c2_c1 = T_c2_c1[:3, 3];
+    
+    E_c2_c1 = np.cross(Transl_c2_c1, R_c2_c1);
+    
+    F_c2_c1 = np.linalg.inv(K_c).T @ E_c2_c1 @ np.linalg.inv(K_c);
+    
+    a = 0;
