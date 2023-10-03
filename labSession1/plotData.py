@@ -244,11 +244,11 @@ if __name__ == '__main__':
     u, s, vh = np.linalg.svd(A);
     plane = vh[-1, :];
     
-    dist_plane_A = abs(plane[0] * X_A[0] + plane[1] * X_A[1] + plane[2] * X_A[2] + plane[3]) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
-    dist_plane_B = abs(plane[0] * X_B[0] + plane[1] * X_B[1] + plane[2] * X_B[2] + plane[3]) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
-    dist_plane_C = abs(plane[0] * X_C[0] + plane[1] * X_C[1] + plane[2] * X_C[2] + plane[3]) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
-    dist_plane_D = abs(plane[0] * X_D[0] + plane[1] * X_D[1] + plane[2] * X_D[2] + plane[3]) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
-    dist_plane_E = abs(plane[0] * X_E[0] + plane[1] * X_E[1] + plane[2] * X_E[2] + plane[3]) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
+    dist_plane_A = np.dot(X_w[:,0], plane) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
+    dist_plane_B = np.dot(X_w[:,1], plane) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
+    dist_plane_C = np.dot(X_w[:,2], plane) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
+    dist_plane_D = np.dot(X_w[:,3], plane) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
+    dist_plane_E = np.dot(X_w[:,4], plane) / np.sqrt(plane[0] * plane[0] + plane[1] * plane[1] + plane[2] * plane[2]);
 
 
     plt.figure(1)
