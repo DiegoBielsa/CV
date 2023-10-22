@@ -163,6 +163,8 @@ def drawEipolarLine (): # Draw epipolar line of a clicked point
     plt.waitforbuttonpress()
     return;
 
+
+
 if __name__ == '__main__':
     np.set_printoptions(precision=4,linewidth=1024,suppress=True)
 
@@ -270,7 +272,7 @@ if __name__ == '__main__':
     # Exercise 2.1: epipolar lines with given F_c2_c1
     drawEipolarLine();
     
-    # Exercise 2.1: Calculate E_c2_c1 and F_c2_c1
+    # Exercise 2.2: Calculate E_c2_c1 and F_c2_c1
     
     T_c2_c1 = T_c2_w @ T_w_c1;
     
@@ -290,3 +292,48 @@ if __name__ == '__main__':
     drawEipolarLine();
     
     # Exercise 2.3: Compute F by estimation with 8 correspondences
+    x1Data = np.loadtxt('x1Data.txt')
+    x2Data = np.loadtxt('x2Data.txt')
+    A=[]
+    k=0
+    print(x1Data.shape)
+    for i in range (x1Data.shape[1]):
+        x1,y1=x1Data[:,i]
+        x2,y2=x2Data[:,i]
+        A.append([x1*x2,y1*x2,x2,x1*y2,y1*y2,y2,x1,y1,1])
+    A=np.array(A)
+    print(A.shape)
+    
+    _,_,V=np.linalg.svd(A)
+    F_estimated=V[-1].reshape(3,3)
+    print(F_estimated)
+    pt1=(x1Data[0,0],x1Data[1,0],1)
+    pt2=(x1Data[0,1],x1Data[1,1],1)
+    pt3=(x1Data[0,2],x1Data[1,2],1)
+    pt4=(x1Data[0,3],x1Data[1,3],1)
+    pt5=(x1Data[0,4],x1Data[1,4],1)
+    l_1_1=F_estimated@pt1
+    l_1_2=F_estimated@pt2
+    l_1_3=F_estimated@pt3
+    l_1_4=F_estimated@pt4
+    l_1_5=F_estimated@pt5
+    e_1=np.dot(F_estimated.T,l_1_1)
+    e_1=e_1/e_1[2]
+    print(e_1)
+    plt.figure(5)
+    plt.imshow(img2, cmap='gray', vmin=0, vmax=255)
+    plt.plot(e_1[0], e_1[1],'rx', markersize=10)
+    plt.title('Image 2 - Epipolar Lines Estimated')
+    plt.draw()  # We update the figure display
+    drawLine(l_1_1, 'g-', 1)
+    drawLine(l_1_2, 'b-', 1)
+    drawLine(l_1_3, 'r-', 1)
+    drawLine(l_1_4, 'y-', 1)
+    drawLine(l_1_5, 'p-', 1)
+    print('Click in the image to continue...')
+    plt.waitforbuttonpress()
+    
+
+
+    
+   
