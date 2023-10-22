@@ -265,17 +265,28 @@ if __name__ == '__main__':
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
     
+    #-------------------------- EXERCISE 2 --------------------------#
+    
+    # Exercise 2.1: epipolar lines with given F_c2_c1
     drawEipolarLine();
     
-    # Calculate E and F
+    # Exercise 2.1: Calculate E_c2_c1 and F_c2_c1
     
-    #T_c2_c1 = T_c2_w @ T_w_c1;
+    T_c2_c1 = T_c2_w @ T_w_c1;
     
-    #R_c2_c1 = T_c2_c1[:3, :3];
-    #Transl_c2_c1 = T_c2_c1[:3, 3];
+    R_c2_c1 = T_c2_c1[:3, :3];
+    Transl_c2_c1 = T_c2_c1[:3, 3];
     
-    #E_c2_c1 = np.cross(Transl_c2_c1, R_c2_c1);
+    Transl_c2_c1_mod = np.array([[0, -Transl_c2_c1[2], Transl_c2_c1[1]],
+                                 [Transl_c2_c1[2], 0, -Transl_c2_c1[0]],
+                                 [-Transl_c2_c1[1], Transl_c2_c1[0], 0]]);
     
-    #F_c2_c1 = np.linalg.inv(K_c).T @ E_c2_c1 @ np.linalg.inv(K_c);
+    E_c2_c1 = np.dot(Transl_c2_c1_mod, R_c2_c1);
     
-    #a = 0;
+    F_c2_c1 = np.linalg.inv(K_c).T @ E_c2_c1 @ np.linalg.inv(K_c);
+    
+    F_21 = F_c2_c1;
+    
+    drawEipolarLine();
+    
+    # Exercise 2.3: Compute F by estimation with 8 correspondences
