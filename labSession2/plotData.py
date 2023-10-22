@@ -270,7 +270,7 @@ if __name__ == '__main__':
     #-------------------------- EXERCISE 2 --------------------------#
     
     # Exercise 2.1: epipolar lines with given F_c2_c1
-    drawEipolarLine();
+    #drawEipolarLine();
     
     # Exercise 2.2: Calculate E_c2_c1 and F_c2_c1
     
@@ -289,7 +289,7 @@ if __name__ == '__main__':
     
     F_21 = F_c2_c1;
     
-    drawEipolarLine();
+    #drawEipolarLine();
     
     # Exercise 2.3: Compute F by estimation with 8 correspondences
     x1Data = np.loadtxt('x1Data.txt')
@@ -298,31 +298,40 @@ if __name__ == '__main__':
     k=0
     print(x1Data.shape)
     for i in range (x1Data.shape[1]):
-        x1,y1=x1Data[:,i]
-        x2,y2=x2Data[:,i]
-        A.append([x1*x2,y1*x2,x2,x1*y2,y1*y2,y2,x1,y1,1])
-    A=np.array(A)
+        x0, y0 = x1Data[:, i]
+        x1, y1 = x2Data[:, i]
+        A.append([x0*x1, y0*x1, x1, x0*y1, y0*y1, y1, x0, y0, 1])
+    A = np.array(A)
     print(A.shape)
     
-    _,_,V=np.linalg.svd(A)
-    F_estimated=V[-1].reshape(3,3)
-    print(F_estimated)
-    pt1=(x1Data[0,0],x1Data[1,0],1)
-    pt2=(x1Data[0,1],x1Data[1,1],1)
-    pt3=(x1Data[0,2],x1Data[1,2],1)
-    pt4=(x1Data[0,3],x1Data[1,3],1)
-    pt5=(x1Data[0,4],x1Data[1,4],1)
-    l_1_1=F_estimated@pt1
-    l_1_2=F_estimated@pt2
-    l_1_3=F_estimated@pt3
-    l_1_4=F_estimated@pt4
-    l_1_5=F_estimated@pt5
-    e_1=np.dot(F_estimated.T,l_1_1)
-    e_1=e_1/e_1[2]
-    print(e_1)
+    _, _, V = np.linalg.svd(A)
+    F_c2_c1_estimated = V[-1].reshape(3, 3)
+    rank = np.linalg.matrix_rank(F_c2_c1_estimated)
+    print(rank)
+    print(F_c2_c1_estimated)
+    pt1 = (x1Data[0,0], x1Data[1,0],1)
+    pt2 = (x1Data[0,1], x1Data[1,1],1)
+    pt3 = (x1Data[0,2], x1Data[1,2],1)
+    pt4 = (x1Data[0,3], x1Data[1,3],1)
+    pt5 = (x1Data[0,4], x1Data[1,4],1)
+    
+    F_21 = F_c2_c1_estimated;
+    
+    drawEipolarLine();
+    
+    l_1_1 = F_c2_c1_estimated @ pt1
+    l_1_2 = F_c2_c1_estimated @ pt2
+    l_1_3 = F_c2_c1_estimated @ pt3
+    l_1_4 = F_c2_c1_estimated @ pt4
+    l_1_5 = F_c2_c1_estimated @ pt5
+    
+    u, s, vh = np.linalg.svd(F_c2_c1_estimated.T);
+    e_2 = vh[-1, :];
+    e_2 = e_2 / e_2[2]
+    print(e_2)
     plt.figure(5)
     plt.imshow(img2, cmap='gray', vmin=0, vmax=255)
-    plt.plot(e_1[0], e_1[1],'rx', markersize=10)
+    plt.plot(e_2[0], e_2[1],'rx', markersize=10)
     plt.title('Image 2 - Epipolar Lines Estimated')
     plt.draw()  # We update the figure display
     drawLine(l_1_1, 'g-', 1)
