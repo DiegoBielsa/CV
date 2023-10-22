@@ -20,7 +20,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 
+F_21 = np.loadtxt('F_21_test.txt')
 
+def drawLine(l,strFormat,lWidth):
+    """
+    Draw a line
+    -input:
+      l: image line in homogenous coordinates
+      strFormat: line format
+      lWidth: line width
+    -output: None
+    """
+    # p_l_y is the intersection of the line with the axis Y (x=0)
+    p_l_y = np.array([0, -l[2] / l[1]])
+    # p_l_x is the intersection point of the line with the axis X (y=0)
+    p_l_x = np.array([-l[2] / l[0], 0])
+    # Draw the line segment p_l_x to  p_l_y
+    plt.plot([p_l_y[0], p_l_x[0]], [p_l_y[1], p_l_x[1]], strFormat, linewidth=lWidth)
 
 # Ensamble T matrix
 def ensamble_T(R_w_c, t_w_c) -> np.array:
@@ -121,31 +137,30 @@ def Capture_Event(event, x, y, flags, params):
         
     return x_0;
   
+def on_click(event):
+    if event.button == 1:  # Left mouse button
+        plt.figure(4)
+        plt.imshow(img2, cmap='gray', vmin=0, vmax=255)
+        plt.title('Image 2 - Epipolar Lines')
+        plt.draw()  # We update the figure display
+        print(f'You clicked at ({event.xdata}, {event.ydata})')
+        x_0 = np.array([event.xdata, event.ydata, 1])
+        l_xi_1 = np.dot(F_21, x_0);
+        drawLine(l_xi_1, 'g-', 1)
         
-    
-def drawEipolarLine (): # Draw epipolar line of a clicked point
-    
-    F_21 = np.loadtxt('F_21_test.txt')
-    
-    
-    img = cv2.imread('image1.png', 1)
-    cv2.imshow('Image 1', img)
-    cv2.setMouseCallback('Image 1', Capture_Event)
-    
-    #l_1 = np.cross(F, x_0);
+                
 
-    plt.figure(4)
-    plt.imshow(img2, cmap='gray', vmin=0, vmax=255)
-    plt.title('Image 2')
+def drawEipolarLine (): # Draw epipolar line of a clicked point
+    fig = plt.figure(3)
+    plt.imshow(img1, cmap='gray', vmin=0, vmax=255)
+    plt.title('Image 1 - Click a point')
     plt.draw()  # We update the figure display
+    fig.canvas.mpl_connect('button_press_event', on_click)
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
     
-
-	
-    
-    
-    
+    print('Click in the image to continue...')
+    plt.waitforbuttonpress()
     return;
 
 if __name__ == '__main__':
@@ -250,17 +265,17 @@ if __name__ == '__main__':
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
     
-    #drawEipolarLine();
+    drawEipolarLine();
     
     # Calculate E and F
     
-    T_c2_c1 = T_c2_w @ T_w_c1;
+    #T_c2_c1 = T_c2_w @ T_w_c1;
     
-    R_c2_c1 = T_c2_c1[:3, :3];
-    Transl_c2_c1 = T_c2_c1[:3, 3];
+    #R_c2_c1 = T_c2_c1[:3, :3];
+    #Transl_c2_c1 = T_c2_c1[:3, 3];
     
-    E_c2_c1 = np.cross(Transl_c2_c1, R_c2_c1);
+    #E_c2_c1 = np.cross(Transl_c2_c1, R_c2_c1);
     
-    F_c2_c1 = np.linalg.inv(K_c).T @ E_c2_c1 @ np.linalg.inv(K_c);
+    #F_c2_c1 = np.linalg.inv(K_c).T @ E_c2_c1 @ np.linalg.inv(K_c);
     
-    a = 0;
+    #a = 0;
