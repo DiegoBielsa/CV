@@ -349,6 +349,12 @@ if __name__ == '__main__':
     rank = np.linalg.matrix_rank(F_c2_c1_estimated)
     print(rank)
     print(F_c2_c1_estimated)
+    U, S, V = np.linalg.svd(F_c2_c1_estimated)
+    S[2:]=0
+    F_c2_c1_estimated = np.dot(U,np.dot(np.diag(S),V))
+    rank = np.linalg.matrix_rank(F_c2_c1_estimated)
+    print(rank)
+    print(F_c2_c1_estimated)
     pt1 = (x1Data[0,0], x1Data[1,0],1)
     pt2 = (x1Data[0,1], x1Data[1,1],1)
     pt3 = (x1Data[0,2], x1Data[1,2],1)
@@ -382,8 +388,55 @@ if __name__ == '__main__':
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
     
+    # Exercise 2.4: Estimate camera poses from F21
 
+    E_c2_c1_estimated=(K_c.T)@F_c2_c1_estimated@K_c
+    U,S,V=np.linalg.svd(E_c2_c1_estimated)
+    print(S)
+    rank = np.linalg.matrix_rank(E_c2_c1_estimated)  
+    print(E_c2_c1_estimated)
+    print(rank)
+    U,S,V=np.linalg.svd(E_c2_c1_estimated)
+    S=np.array([[1,0,0],[0,1,0],[0,0,0]])
+    E_c2_c1_estimated = np.dot(U,np.dot(S,V))
+    rank = np.linalg.matrix_rank(E_c2_c1_estimated)   
+    print(E_c2_c1_estimated)
+    print(rank)
+    U,S,V=np.linalg.svd(E_c2_c1_estimated)
+    W=np.array([[0,-1,0],[1,0,0],[0,0,1]])
+    R1=U@W@V
+    R2=U@(W.T)@V
+    T1=U@S@U.T
+    T2=-U@S@U.T
+    
+    
+    print(R1.shape)
+    
+    Pose_1=np.hstack((R1,(T1.T).reshape(-1,1)))
+    Pose_2=np.hstack((R2,(T1.T).reshape(-1,1)))
+    Pose_3=np.hstack((R1,(T2.T).reshape(-1,1)))
+    Pose_4=np.hstack((R2,(T2.T).reshape(-1,1)))
+    print(Pose_1)
+    I_matrix=np.eye(3)
+    O_matrix=np.zeros((1,3))
+    I_matrix_2=np.hstack(I_matrix,O_matrix)
+    P1=K_c@I_matrix_2 
+    P2_1=K_c@Pose_1
+    P2_2=K_c@Pose_2 
+    P2_3=K_c@Pose_3
+    P2_4=K_c@Pose_4
+    Points_2=[]
 
+    r,c=x2Data.shape
+    for i in range (r):
+        new_row=[]
+        for j in range(c+1):
+            new_row.append()
+
+    X_1=np.linalg.inv(P2_1)@Points_2
+    X_2=np.linalg.inv(P2_2)@Points_2
+    X_3=np.linalg.inv(P2_3)@Points_2
+    X_4=np.linalg.inv(P2_4)@Points_2
     
     #-------------------------- EXERCISE 3 --------------------------#
    
