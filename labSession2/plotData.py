@@ -21,6 +21,7 @@ import numpy as np
 import cv2
 
 F_21 = np.loadtxt('F_21_test.txt')
+H_c2_c1_toPlot = [];
 
 def drawLine(l,strFormat,lWidth):
     """
@@ -137,7 +138,7 @@ def Capture_Event(event, x, y, flags, params):
         
     return x_0;
   
-def on_click(event):
+def on_click_epipolar(event):
     if event.button == 1:  # Left mouse button
         plt.figure(4)
         plt.imshow(img2, cmap='gray', vmin=0, vmax=255)
@@ -154,13 +155,39 @@ def drawEipolarLine (): # Draw epipolar line of a clicked point
     plt.imshow(img1, cmap='gray', vmin=0, vmax=255)
     plt.title('Image 1 - Click a point')
     plt.draw()  # We update the figure display
-    fig.canvas.mpl_connect('button_press_event', on_click)
+    fig.canvas.mpl_connect('button_press_event', on_click_epipolar)
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
     
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
     return;
+
+def on_click_homography(event):
+    if event.button == 1:  # Left mouse button
+        plt.figure(7)
+        plt.imshow(img2, cmap='gray', vmin=0, vmax=255)
+        plt.title('Image 2 - Homography')
+        plt.draw()  # We update the figure display
+        print(f'You clicked at ({event.xdata}, {event.ydata})')
+        p1 = np.array([event.xdata, event.ydata, 1])
+        p2 = np.dot(H_c2_c1, p1) # apply homography
+        p2 /= p2[2]
+        plt.plot(p2[0], p2[1],'rx', markersize=10)
+
+def drawHomography (): # Draw epipolar line of a clicked point
+    fig = plt.figure(6)
+    plt.imshow(img1, cmap='gray', vmin=0, vmax=255)
+    plt.title('Image 1 - Click a point on the ground plane')
+    plt.draw()  # We update the figure display
+    fig.canvas.mpl_connect('button_press_event', on_click_homography)
+    print('Click in the image to continue...')
+    plt.waitforbuttonpress()
+    
+    print('Click in the image to continue...')
+    plt.waitforbuttonpress()
+    return;
+    
 
 def display_homography_correspondances(image1, image2, homography_matrix):
     def show_corresponding_point(event, x, y, flags, param):
@@ -368,26 +395,19 @@ if __name__ == '__main__':
     
     H_c2_c1 = K_c @ (R_c2_c1 - (Transl_c2_c1.reshape(3,1) @ n_Pi_c1.reshape(1,3)) / Pi_c1[3]) @ np.linalg.inv(K_c)
     H_c2_c1 = H_c2_c1 / H_c2_c1[2][2]
-    
+    H_c2_c1_toPlot = H_c2_c1
     
     # Exercise 3.2: Point transfer visualization DO I HAVE TO MAKE THEM RANFOMLY?¿
-    rowsX, columnsX = np.shape(X_w)
-    for i in range(columnsX):
-        X_w[2][i] = 0;
-        print(Pi_c1[0] * X_w[0][i] + Pi_c1[1] * X_w[1][i] + Pi_c1[2] * X_w[2][i] + Pi_c1[3])
-        if X_w[:,i] @ Pi_c1 == 0:
-            print(X_w[:,i])
+    #drawHomography();
             
     # Exercise 3.3: 
-    x1FloorData = np.loadtxt('x1FloorData.txt')
-    x2FloorData = np.loadtxt('x2FloorData.txt')
+    x1, y1, _ = np.loadtxt('x1FloorData.txt')
+    x2, y2, _ = np.loadtxt('x2FloorData.txt')
     
     A = []
-    for i in range(len(x1FloorData)):
-        x0, y0, _ = x1FloorData[:, i]
-        x1, y1, _ = x2FloorData[:, i]
-        A.append([x0, y0, 1, 0, 0, 0, -x1 * x0, -x1 * y0, -x1])
-        A.append([0, 0, 0, x0, y0, 1, -y1 * x0, -y1 * y0, -y1])
+    for i in range(len(x1)):
+        A.append([x1[i], y1[i], 1, 0, 0, 0, -x2[i]*x1[i], -x2[i]*y1[i], -x2[i]])
+        A.append([0, 0, 0, x1[i], y1[i], 1, -y2[i]*x1[i], -y2[i]*y1[i], -y2[i]])
     A = np.array(A)
     print(A.shape)
     
@@ -395,5 +415,8 @@ if __name__ == '__main__':
     H_c2_c1_estimated = vh[-1].reshape(3, 3)
     
     H_c2_c1_estimated = H_c2_c1_estimated / H_c2_c1_estimated[2][2]
+    H_c2_c1_toPlot = H_c2_c1_estimated
     
-    display_homography_correspondances(img1, img2, H_c2_c1_estimated)	
+    drawHomography();
+    
+    
