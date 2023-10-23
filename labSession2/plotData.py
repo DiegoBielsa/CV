@@ -393,6 +393,10 @@ if __name__ == '__main__':
     # Diego
     E_c2_c1_estimated = (K_c.T) @ F_c2_c1_estimated @ K_c
     U, S, Vt = np.linalg.svd(E_c2_c1_estimated)
+    U,S,V = np.linalg.svd(E_c2_c1_estimated)
+    S = np.array([[1,0,0],[0,1,0],[0,0,0]])
+    E_c2_c1_estimated = np.dot(U,np.dot(S,V))
+    U,S,V = np.linalg.svd(E_c2_c1_estimated)
     W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
     
     # R +90 and +t
@@ -412,15 +416,14 @@ if __name__ == '__main__':
     
     x0, y0 = x1Data[:, 0]
     x1, y1 = x2Data[:, 0]
-    P_c1_local = K_c @ P_canonical 
-    A = np.array([[P_c1_local[2][0] * x0 - P_c1_local[0][0], P_c1_local[2][1] * x0 - P_c1_local[0][1], P_c1_local[2][2] * x0 - P_c1_local[0][2], P_c1_local[2][3] * x0 - P_c1_local[0][3]],
-                 [P_c1_local[2][0] * y0 - P_c1_local[1][0], P_c1_local[2][1] * y0 - P_c1_local[1][1], P_c1_local[2][2] * y0 - P_c1_local[1][2], P_c1_local[2][3] * y0 - P_c1_local[1][3]],
-                 [P_c1_local[2][0] * x1 - P_c1_local[0][0], P_c1_local[2][1] * x1 - P_c1_local[0][1], P_c1_local[2][2] * x1 - P_c1_local[0][2], P_c1_local[2][3] * x1 - P_c1_local[0][3]],
-                 [P_c1_local[2][0] * y1 - P_c1_local[1][0], P_c1_local[2][1] * y1 - P_c1_local[1][1], P_c1_local[2][2] * y1 - P_c1_local[1][2], P_c1_local[2][3] * y1 - P_c1_local[1][3]]]);
+    A = np.array([[P_c1[2][0] * x0 - P_c1[0][0], P_c1[2][1] * x0 - P_c1[0][1], P_c1[2][2] * x0 - P_c1[0][2], P_c1[2][3] * x0 - P_c1[0][3]],
+                 [P_c1[2][0] * y0 - P_c1[1][0], P_c1[2][1] * y0 - P_c1[1][1], P_c1[2][2] * y0 - P_c1[1][2], P_c1[2][3] * y0 - P_c1[1][3]],
+                 [P_c2[2][0] * x1 - P_c2[0][0], P_c2[2][1] * x1 - P_c2[0][1], P_c2[2][2] * x1 - P_c2[0][2], P_c2[2][3] * x1 - P_c2[0][3]],
+                 [P_c2[2][0] * y1 - P_c2[1][0], P_c2[2][1] * y1 - P_c2[1][1], P_c2[2][2] * y1 - P_c2[1][2], P_c2[2][3] * y1 - P_c2[1][3]]]);
     
     U, S, Vt = np.linalg.svd(A)
-    X_c1 = Vt[-1, :];
-    X_c1 /= X_c1[3];
+    X = Vt[-1, :];
+    X /= X[3];
     
     # Now lets calculate if the point is seen with both cameras
     T_c2_c1_estimated0 = np.eye(4)
@@ -439,9 +442,15 @@ if __name__ == '__main__':
     T_c2_c1_estimated3[:3, :3] = R3
     T_c2_c1_estimated3[:3, 3] = t3
     
-    # These are the two possible, now i have to see with which one i can see it from C1
-    X_cam2_0 = T_c2_c1_estimated0 @ X_c1
-    X_cam2_2 = T_c2_c1_estimated2 @ X_c1
+    # I transform the points to the camera frames
+    X_c1 = T_c1_w @ X
+    X_c2 = T_c2_w @ X
+    
+    # I transform 
+    X_c2_estimated0 = T_c2_c1_estimated0 @ X_c1
+    X_c2_estimated1 = T_c2_c1_estimated1 @ X_c1
+    X_c2_estimated2 = T_c2_c1_estimated2 @ X_c1
+    X_c2_estimated3 = T_c2_c1_estimated3 @ X_c1
     
     # These are negative, not seen
     X_cam2_1 = T_c2_c1_estimated1 @ X_c1
@@ -530,14 +539,14 @@ if __name__ == '__main__':
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
 
-    drawRefSystem(ax, np.eye(4, 4), '-', 'C1_estimated')
-    drawRefSystem(ax, T_c1_c2_estimated, '-', 'C2_estimated')
-    drawRefSystem(ax, np.eye(4, 4), '-', 'C1')
-    drawRefSystem(ax, T_c1_c2, '-', 'C2')
+    drawRefSystem(ax, T_w_c1, '-', 'C1')
+    drawRefSystem(ax, Pose_2, '-', 'C2_estimated')
+    drawRefSystem(ax, np.eye(4, 4), '-', 'W')
+    drawRefSystem(ax, T_w_c2, '-', 'C2')
 
 
-    ax.scatter(X_3D_estimated[0, :], X_3D_estimated[1, :], X_3D_estimated[2, :], marker='.')
-    plotNumbered3DPoints(ax, X_3D_estimated, 'r', (0.1, 0.1, 0.1)) # For plotting with numbers (choose one of the both options)
+    ax.scatter(X_w[0, :], X_w[1, :], X_w[2, :], marker='.')
+    plotNumbered3DPoints(ax, X_w, 'r', (0.1, 0.1, 0.1)) # For plotting with numbers (choose one of the both options)
 
     #Matplotlib does not correctly manage the axis('equal')
     xFakeBoundingBox = np.linspace(0, 4, 2)
@@ -547,8 +556,11 @@ if __name__ == '__main__':
     print('Close the figure to continue. Left button for orbit, right button for zoom.')
     plt.show()
 
-    P_C2_C1=T_c1_c2@[0,0,0,1]
-    P_C2_C1_estimated=T_c1_c2_estimated@[0,0,0,1]
+    Point_C2_ext = T_w_c2 @ [0,0,0,1]
+    Point_C2_estimated = T_w_c1 @ np.linalg.inv(T_c2_c1_estimated0) @ [0,0,0,1] 
+    
+    dist = np.sqrt((Point_C2_ext[0] - Point_C2_estimated[0])**2 + (Point_C2_ext[1] - Point_C2_estimated[1])**2 + 
+                   (Point_C2_ext[2] - Point_C2_estimated[2])**2 + (Point_C2_ext[3] - Point_C2_estimated[3])**2)
     
     #-------------------------- EXERCISE 3 --------------------------#
    
