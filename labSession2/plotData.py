@@ -412,24 +412,63 @@ if __name__ == '__main__':
     
     x0, y0 = x1Data[:, 0]
     x1, y1 = x2Data[:, 0]
-    A = np.array([[P_c1[2][0] * x0 - P_c1[0][0], P_c1[2][1] * x0 - P_c1[0][1], P_c1[2][2] * x0 - P_c1[0][2], P_c1[2][3] * x0 - P_c1[0][3]],
-                 [P_c1[2][0] * y0 - P_c1[1][0], P_c1[2][1] * y0 - P_c1[1][1], P_c1[2][2] * y0 - P_c1[1][2], P_c1[2][3] * y0 - P_c1[1][3]],
-                 [P_c1[2][0] * x1 - P_c1[0][0], P_c1[2][1] * x1 - P_c1[0][1], P_c1[2][2] * x1 - P_c1[0][2], P_c1[2][3] * x1 - P_c1[0][3]],
-                 [P_c1[2][0] * y1 - P_c1[1][0], P_c1[2][1] * y1 - P_c1[1][1], P_c1[2][2] * y1 - P_c1[1][2], P_c1[2][3] * y1 - P_c1[1][3]]]);
+    P_c1_local = K_c @ P_canonical 
+    A = np.array([[P_c1_local[2][0] * x0 - P_c1_local[0][0], P_c1_local[2][1] * x0 - P_c1_local[0][1], P_c1_local[2][2] * x0 - P_c1_local[0][2], P_c1_local[2][3] * x0 - P_c1_local[0][3]],
+                 [P_c1_local[2][0] * y0 - P_c1_local[1][0], P_c1_local[2][1] * y0 - P_c1_local[1][1], P_c1_local[2][2] * y0 - P_c1_local[1][2], P_c1_local[2][3] * y0 - P_c1_local[1][3]],
+                 [P_c1_local[2][0] * x1 - P_c1_local[0][0], P_c1_local[2][1] * x1 - P_c1_local[0][1], P_c1_local[2][2] * x1 - P_c1_local[0][2], P_c1_local[2][3] * x1 - P_c1_local[0][3]],
+                 [P_c1_local[2][0] * y1 - P_c1_local[1][0], P_c1_local[2][1] * y1 - P_c1_local[1][1], P_c1_local[2][2] * y1 - P_c1_local[1][2], P_c1_local[2][3] * y1 - P_c1_local[1][3]]]);
     
     U, S, Vt = np.linalg.svd(A)
-    X = Vt[-1, :];
-    X /= X[3];
+    X_c1 = Vt[-1, :];
+    X_c1 /= X_c1[3];
     
     # Now lets calculate if the point is seen with both cameras
-    T_c2_c1_estimated = np.eye(4)
-    T_c2_c1_estimated[:3, :3] = R0
-    T_c2_c1_estimated[:3, 3] = t0
-    P_cam1 = K_c @ (T_c2_c1_estimated @ X.T)
-    P_cam2 = K_c @ X
+    T_c2_c1_estimated0 = np.eye(4)
+    T_c2_c1_estimated0[:3, :3] = R0
+    T_c2_c1_estimated0[:3, 3] = t0
     
-    P_cam1_test = T_c1_w @ (R0 @ X)
-    P_cam2__test = T_c2_w @ X
+    T_c2_c1_estimated1 = np.eye(4)
+    T_c2_c1_estimated1[:3, :3] = R1
+    T_c2_c1_estimated1[:3, 3] = t1
+    
+    T_c2_c1_estimated2 = np.eye(4)
+    T_c2_c1_estimated2[:3, :3] = R2
+    T_c2_c1_estimated2[:3, 3] = t2
+    
+    T_c2_c1_estimated3 = np.eye(4)
+    T_c2_c1_estimated3[:3, :3] = R3
+    T_c2_c1_estimated3[:3, 3] = t3
+    
+    # These are the two possible, now i have to see with which one i can see it from C1
+    X_cam2_0 = T_c2_c1_estimated0 @ X_c1
+    X_cam2_2 = T_c2_c1_estimated2 @ X_c1
+    
+    # These are negative, not seen
+    X_cam2_1 = T_c2_c1_estimated1 @ X_c1
+    X_cam2_3 = T_c2_c1_estimated3 @ X_c1
+    
+    # Calculate the possibles P from P2 then we look in X_cam2_0 and X_cam2_2 which are positive, visible
+    P_c2_0_estimated = K_c @ P_canonical @ T_c2_c1_estimated0
+    A_0 = np.array([[P_c2_0_estimated[2][0] * x0 - P_c2_0_estimated[0][0], P_c2_0_estimated[2][1] * x0 - P_c2_0_estimated[0][1], P_c2_0_estimated[2][2] * x0 - P_c2_0_estimated[0][2], P_c2_0_estimated[2][3] * x0 - P_c2_0_estimated[0][3]],
+                 [P_c2_0_estimated[2][0] * y0 - P_c2_0_estimated[1][0], P_c2_0_estimated[2][1] * y0 - P_c2_0_estimated[1][1], P_c2_0_estimated[2][2] * y0 - P_c2_0_estimated[1][2], P_c2_0_estimated[2][3] * y0 - P_c2_0_estimated[1][3]],
+                 [P_c2_0_estimated[2][0] * x1 - P_c2_0_estimated[0][0], P_c2_0_estimated[2][1] * x1 - P_c2_0_estimated[0][1], P_c2_0_estimated[2][2] * x1 - P_c2_0_estimated[0][2], P_c2_0_estimated[2][3] * x1 - P_c2_0_estimated[0][3]],
+                 [P_c2_0_estimated[2][0] * y1 - P_c2_0_estimated[1][0], P_c2_0_estimated[2][1] * y1 - P_c2_0_estimated[1][1], P_c2_0_estimated[2][2] * y1 - P_c2_0_estimated[1][2], P_c2_0_estimated[2][3] * y1 - P_c2_0_estimated[1][3]]]);
+    
+    U, S, Vt = np.linalg.svd(A_0)
+    X_c2_e0 = Vt[-1, :];
+    X_c2_e0 /= X_c2_e0[3];
+    
+    P_c2_2_estimated = K_c @ P_canonical @  T_c2_c1_estimated2
+    A = np.array([[P_c2_2_estimated[2][0] * x0 - P_c2_2_estimated[0][0], P_c2_2_estimated[2][1] * x0 - P_c2_2_estimated[0][1], P_c2_2_estimated[2][2] * x0 - P_c2_2_estimated[0][2], P_c2_2_estimated[2][3] * x0 - P_c2_2_estimated[0][3]],
+                 [P_c2_2_estimated[2][0] * y0 - P_c2_2_estimated[1][0], P_c2_2_estimated[2][1] * y0 - P_c2_2_estimated[1][1], P_c2_2_estimated[2][2] * y0 - P_c2_2_estimated[1][2], P_c2_2_estimated[2][3] * y0 - P_c2_2_estimated[1][3]],
+                 [P_c2_2_estimated[2][0] * x1 - P_c2_2_estimated[0][0], P_c2_2_estimated[2][1] * x1 - P_c2_2_estimated[0][1], P_c2_2_estimated[2][2] * x1 - P_c2_2_estimated[0][2], P_c2_2_estimated[2][3] * x1 - P_c2_2_estimated[0][3]],
+                 [P_c2_2_estimated[2][0] * y1 - P_c2_2_estimated[1][0], P_c2_2_estimated[2][1] * y1 - P_c2_2_estimated[1][1], P_c2_2_estimated[2][2] * y1 - P_c2_2_estimated[1][2], P_c2_2_estimated[2][3] * y1 - P_c2_2_estimated[1][3]]]);
+    
+    U, S, Vt = np.linalg.svd(A)
+    X_c2 = Vt[-1, :];
+    X_c2 /= X_c2[3];
+    
+    
 
     # Alejandro
     E_c2_c1_estimated=(K_c.T)@F_c2_c1_estimated@K_c
