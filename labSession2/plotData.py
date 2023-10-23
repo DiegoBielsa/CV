@@ -147,7 +147,6 @@ def on_click(event):
         x_0 = np.array([event.xdata, event.ydata, 1])
         l_xi_1 = np.dot(F_21, x_0);
         drawLine(l_xi_1, 'g-', 1)
-        
                 
 
 def drawEipolarLine (): # Draw epipolar line of a clicked point
@@ -163,6 +162,20 @@ def drawEipolarLine (): # Draw epipolar line of a clicked point
     plt.waitforbuttonpress()
     return;
 
+def display_homography_correspondances(image1, image2, homography_matrix):
+    def show_corresponding_point(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            point1 = np.array([x, y, 1])
+            point2 = np.dot(homography_matrix, point1)
+            point2 /= point2[2]
+            cv2.circle(image2, (int(point2[0]), int(point2[1])), 5, (0, 0, 255), -1)
+            cv2.imshow('Image 2', image2)
+
+    cv2.imshow('Image 1', image1)
+    cv2.setMouseCallback('Image 1', show_corresponding_point)
+
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
@@ -345,4 +358,42 @@ if __name__ == '__main__':
 
 
     
-   #-------------------------- EXERCISE 3 --------------------------#
+    #-------------------------- EXERCISE 3 --------------------------#
+   
+    # Exercise 3.1: Homography definition
+    Pi_c1 = np.loadtxt('Pi_1.txt')
+    
+    n_Pi_c1 = Pi_c1[:3];
+    d = Pi_c1[3] / np.sqrt(Pi_c1[0] * Pi_c1[0] + Pi_c1[1] * Pi_c1[1] + Pi_c1[2] * Pi_c1[2]);
+    
+    H_c2_c1 = K_c @ (R_c2_c1 - (Transl_c2_c1.reshape(3,1) @ n_Pi_c1.reshape(1,3)) / Pi_c1[3]) @ np.linalg.inv(K_c)
+    H_c2_c1 = H_c2_c1 / H_c2_c1[2][2]
+    
+    
+    # Exercise 3.2: Point transfer visualization DO I HAVE TO MAKE THEM RANFOMLY?¿
+    rowsX, columnsX = np.shape(X_w)
+    for i in range(columnsX):
+        X_w[2][i] = 0;
+        print(Pi_c1[0] * X_w[0][i] + Pi_c1[1] * X_w[1][i] + Pi_c1[2] * X_w[2][i] + Pi_c1[3])
+        if X_w[:,i] @ Pi_c1 == 0:
+            print(X_w[:,i])
+            
+    # Exercise 3.3: 
+    x1FloorData = np.loadtxt('x1FloorData.txt')
+    x2FloorData = np.loadtxt('x2FloorData.txt')
+    
+    A = []
+    for i in range(len(x1FloorData)):
+        x0, y0, _ = x1FloorData[:, i]
+        x1, y1, _ = x2FloorData[:, i]
+        A.append([x0, y0, 1, 0, 0, 0, -x1 * x0, -x1 * y0, -x1])
+        A.append([0, 0, 0, x0, y0, 1, -y1 * x0, -y1 * y0, -y1])
+    A = np.array(A)
+    print(A.shape)
+    
+    u, s, vh = np.linalg.svd(A);
+    H_c2_c1_estimated = vh[-1].reshape(3, 3)
+    
+    H_c2_c1_estimated = H_c2_c1_estimated / H_c2_c1_estimated[2][2]
+    
+    display_homography_correspondances(img1, img2, H_c2_c1_estimated)	
