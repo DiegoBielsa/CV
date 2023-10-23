@@ -389,7 +389,49 @@ if __name__ == '__main__':
     plt.waitforbuttonpress()
     
     # Exercise 2.4: Estimate camera poses from F21
+    
+    # Diego
+    E_c2_c1_estimated = (K_c.T) @ F_c2_c1_estimated @ K_c
+    U, S, Vt = np.linalg.svd(E_c2_c1_estimated)
+    W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+    
+    # R +90 and +t
+    R0 = U @ W @ Vt;
+    t0 = U[:, 2]
+    # R +90 and -t
+    R1 = U @ W @ Vt;
+    t1 = -U[:, 2]
+    # R -90 and +t
+    R2 = U @ W.T @ Vt;
+    t2 = U[:, 2]
+    # R -90 and -t
+    R3 = U @ W.T @ Vt;
+    t3 = -U[:, 2]
+    
+    # Triangulation of one point (The first one for example)
+    
+    x0, y0 = x1Data[:, 0]
+    x1, y1 = x2Data[:, 0]
+    A = np.array([[P_c1[2][0] * x0 - P_c1[0][0], P_c1[2][1] * x0 - P_c1[0][1], P_c1[2][2] * x0 - P_c1[0][2], P_c1[2][3] * x0 - P_c1[0][3]],
+                 [P_c1[2][0] * y0 - P_c1[1][0], P_c1[2][1] * y0 - P_c1[1][1], P_c1[2][2] * y0 - P_c1[1][2], P_c1[2][3] * y0 - P_c1[1][3]],
+                 [P_c1[2][0] * x1 - P_c1[0][0], P_c1[2][1] * x1 - P_c1[0][1], P_c1[2][2] * x1 - P_c1[0][2], P_c1[2][3] * x1 - P_c1[0][3]],
+                 [P_c1[2][0] * y1 - P_c1[1][0], P_c1[2][1] * y1 - P_c1[1][1], P_c1[2][2] * y1 - P_c1[1][2], P_c1[2][3] * y1 - P_c1[1][3]]]);
+    
+    U, S, Vt = np.linalg.svd(A)
+    X = Vt[-1, :];
+    X /= X[3];
+    
+    # Now lets calculate if the point is seen with both cameras
+    T_c2_c1_estimated = np.eye(4)
+    T_c2_c1_estimated[:3, :3] = R0
+    T_c2_c1_estimated[:3, 3] = t0
+    P_cam1 = K_c @ (T_c2_c1_estimated @ X.T)
+    P_cam2 = K_c @ X
+    
+    P_cam1_test = T_c1_w @ (R0 @ X)
+    P_cam2__test = T_c2_w @ X
 
+    # Alejandro
     E_c2_c1_estimated=(K_c.T)@F_c2_c1_estimated@K_c
     U,S,V=np.linalg.svd(E_c2_c1_estimated)
     print(S)
