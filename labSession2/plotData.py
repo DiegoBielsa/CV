@@ -471,6 +471,7 @@ if __name__ == '__main__':
     
 
     # Alejandro
+    """
     E_c2_c1_estimated=(K_c.T)@F_c2_c1_estimated@K_c
     U,S,V=np.linalg.svd(E_c2_c1_estimated)
     print(S)
@@ -518,6 +519,36 @@ if __name__ == '__main__':
     X_2=np.linalg.inv(P2_2)@Points_2
     X_3=np.linalg.inv(P2_3)@Points_2
     X_4=np.linalg.inv(P2_4)@Points_2
+    """
+    # Exercise 2.5: Visualization and comparison
+    T_c1_c2=T_c1_w@T_w_c2
+
+    fig3D = plt.figure(6)
+
+    ax = plt.axes(projection='3d', adjustable='box')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    drawRefSystem(ax, np.eye(4, 4), '-', 'C1_estimated')
+    drawRefSystem(ax, T_c1_c2_estimated, '-', 'C2_estimated')
+    drawRefSystem(ax, np.eye(4, 4), '-', 'C1')
+    drawRefSystem(ax, T_c1_c2, '-', 'C2')
+
+
+    ax.scatter(X_3D_estimated[0, :], X_3D_estimated[1, :], X_3D_estimated[2, :], marker='.')
+    plotNumbered3DPoints(ax, X_3D_estimated, 'r', (0.1, 0.1, 0.1)) # For plotting with numbers (choose one of the both options)
+
+    #Matplotlib does not correctly manage the axis('equal')
+    xFakeBoundingBox = np.linspace(0, 4, 2)
+    yFakeBoundingBox = np.linspace(0, 4, 2)
+    zFakeBoundingBox = np.linspace(0, 4, 2)
+    plt.plot(xFakeBoundingBox, yFakeBoundingBox, zFakeBoundingBox, 'w.')
+    print('Close the figure to continue. Left button for orbit, right button for zoom.')
+    plt.show()
+
+    P_C2_C1=T_c1_c2@[0,0,0,1]
+    P_C2_C1_estimated=T_c1_c2_estimated@[0,0,0,1]
     
     #-------------------------- EXERCISE 3 --------------------------#
    
