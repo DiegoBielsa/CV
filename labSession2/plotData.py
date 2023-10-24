@@ -150,7 +150,7 @@ def on_click_epipolar(event):
         drawLine(l_xi_1, 'g-', 1)
                 
 
-def drawEipolarLine (): # Draw epipolar line of a clicked point
+def drawEpipolarLine (): # Draw epipolar line of a clicked point
     fig = plt.figure(3)
     plt.imshow(img1, cmap='gray', vmin=0, vmax=255)
     plt.title('Image 1 - Click a point')
@@ -310,7 +310,7 @@ if __name__ == '__main__':
     #-------------------------- EXERCISE 2 --------------------------#
     
     # Exercise 2.1: epipolar lines with given F_c2_c1
-    #drawEipolarLine();
+    #drawipolarLine();
     
     # Exercise 2.2: Calculate E_c2_c1 and F_c2_c1
     
@@ -329,7 +329,7 @@ if __name__ == '__main__':
     
     F_21 = F_c2_c1;
     
-    #drawEipolarLine();
+    #drawEpipolarLine();
     
     # Exercise 2.3: Compute F by estimation with 8 correspondences
     x1Data = np.loadtxt('x1Data.txt')
@@ -363,7 +363,7 @@ if __name__ == '__main__':
     
     F_21 = F_c2_c1_estimated;
     
-    drawEipolarLine();
+    drawEpipolarLine();
     
     l_1_1 = F_c2_c1_estimated @ pt1
     l_1_2 = F_c2_c1_estimated @ pt2
