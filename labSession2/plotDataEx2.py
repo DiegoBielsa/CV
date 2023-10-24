@@ -131,12 +131,6 @@ def drawRefSystem(ax, T_w_c, strStyle, nameStr):
     draw3DLine(ax, T_w_c[0:3, 3:4], T_w_c[0:3, 3:4] + T_w_c[0:3, 2:3], strStyle, 'b', 1)
     ax.text(np.squeeze( T_w_c[0, 3]+0.1), np.squeeze( T_w_c[1, 3]+0.1), np.squeeze( T_w_c[2, 3]+0.1), nameStr)
     
-def Capture_Event(event, x, y, flags, params):
-    if event == cv2.EVENT_LBUTTONDOWN:
-        x_0 = np.array([x, y]);
-        
-        
-    return x_0;
   
 def on_click_epipolar(event):
     if event.button == 1:  # Left mouse button
@@ -150,8 +144,8 @@ def on_click_epipolar(event):
         drawLine(l_xi_1, 'g-', 1)
                 
 
-def drawEpipolarLine (): # Draw epipolar line of a clicked point
-    fig = plt.figure(3)
+def drawEpipolarLine (figNum): # Draw epipolar line of a clicked point
+    fig = plt.figure(figNum)
     plt.imshow(img1, cmap='gray', vmin=0, vmax=255)
     plt.title('Image 1 - Click a point')
     plt.draw()  # We update the figure display
@@ -162,47 +156,16 @@ def drawEpipolarLine (): # Draw epipolar line of a clicked point
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
     return;
-
-def on_click_homography(event):
-    if event.button == 1:  # Left mouse button
-        plt.figure(7)
-        plt.imshow(img2, cmap='gray', vmin=0, vmax=255)
-        plt.title('Image 2 - Homography')
-        plt.draw()  # We update the figure display
-        print(f'You clicked at ({event.xdata}, {event.ydata})')
-        p1 = np.array([event.xdata, event.ydata, 1])
-        p2 = np.dot(H_c2_c1, p1) # apply homography
-        p2 /= p2[2]
-        plt.plot(p2[0], p2[1],'rx', markersize=10)
-
-def drawHomography (): # Draw epipolar line of a clicked point
-    fig = plt.figure(6)
-    plt.imshow(img1, cmap='gray', vmin=0, vmax=255)
-    plt.title('Image 1 - Click a point on the ground plane')
-    plt.draw()  # We update the figure display
-    fig.canvas.mpl_connect('button_press_event', on_click_homography)
-    print('Click in the image to continue...')
-    plt.waitforbuttonpress()
-    
-    print('Click in the image to continue...')
-    plt.waitforbuttonpress()
-    return;
     
 
-def display_homography_correspondances(image1, image2, homography_matrix):
-    def show_corresponding_point(event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN:
-            point1 = np.array([x, y, 1])
-            point2 = np.dot(homography_matrix, point1)
-            point2 /= point2[2]
-            cv2.circle(image2, (int(point2[0]), int(point2[1])), 5, (0, 0, 255), -1)
-            cv2.imshow('Image 2', image2)
+def euclideanDistance3d(point1, point2):
+    
+    dehomogenized_point1 = point1 / point1[3]
+    dehomogenized_point2 = point2 / point2[3]
 
-    cv2.imshow('Image 1', image1)
-    cv2.setMouseCallback('Image 1', show_corresponding_point)
+    distance = np.linalg.norm(dehomogenized_point1 - dehomogenized_point2)
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    return distance
 
 
 if __name__ == '__main__':
@@ -310,7 +273,7 @@ if __name__ == '__main__':
     #-------------------------- EXERCISE 2 --------------------------#
     
     # Exercise 2.1: epipolar lines with given F_c2_c1
-    #drawipolarLine();
+    drawEpipolarLine(12);
     
     # Exercise 2.2: Calculate E_c2_c1 and F_c2_c1
     
@@ -329,7 +292,7 @@ if __name__ == '__main__':
     
     F_21 = F_c2_c1;
     
-    #drawEpipolarLine();
+    drawEpipolarLine(13);
     
     # Exercise 2.3: Compute F by estimation with 8 correspondences
     x1Data = np.loadtxt('x1Data.txt')
@@ -363,7 +326,7 @@ if __name__ == '__main__':
     
     F_21 = F_c2_c1_estimated;
     
-    drawEpipolarLine();
+    drawEpipolarLine(14);
     
     l_1_1 = F_c2_c1_estimated @ pt1
     l_1_2 = F_c2_c1_estimated @ pt2
@@ -390,148 +353,54 @@ if __name__ == '__main__':
     
     # Exercise 2.4: Estimate camera poses from F21
     
-    # Diego
-    E_c2_c1_estimated = (K_c.T) @ F_c2_c1_estimated @ K_c
-    U, S, Vt = np.linalg.svd(E_c2_c1_estimated)
-    U,S,V = np.linalg.svd(E_c2_c1_estimated)
-    S = np.array([[1,0,0],[0,1,0],[0,0,0]])
-    E_c2_c1_estimated = np.dot(U,np.dot(S,V))
-    U,S,V = np.linalg.svd(E_c2_c1_estimated)
+    E_c2_c1_estimated = (K_c.T) @ F_c2_c1 @ K_c
+    
+    U, _, V = np.linalg.svd(E_c2_c1_estimated)
+    
+    
     W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
     
-    # R +90 and +t
-    R0 = U @ W @ Vt;
-    t0 = U[:, 2]
-    # R +90 and -t
-    R1 = U @ W @ Vt;
-    t1 = -U[:, 2]
-    # R -90 and +t
-    R2 = U @ W.T @ Vt;
-    t2 = U[:, 2]
-    # R -90 and -t
-    R3 = U @ W.T @ Vt;
-    t3 = -U[:, 2]
+    R1 = U @ W @ V
+    R2 = U @ W.T @ V
+    
+    t1 = U[:, 2]
+    t2 = -U[:, 2]
+    
+    T_c2_c1_estimated0 = np.vstack((np.hstack((R1, t1[:, np.newaxis])), [0, 0, 0, 1]))
+    T_c2_c1_estimated1 = np.vstack((np.hstack((R1, t2[:, np.newaxis])), [0, 0, 0, 1]))
+    T_c2_c1_estimated2 = np.vstack((np.hstack((R2, t1[:, np.newaxis])), [0, 0, 0, 1]))
+    T_c2_c1_estimated3 = np.vstack((np.hstack((R2, t2[:, np.newaxis])), [0, 0, 0, 1]))
     
     # Triangulation of one point (The first one for example)
     
     x0, y0 = x1Data[:, 0]
     x1, y1 = x2Data[:, 0]
-    A = np.array([[P_c1[2][0] * x0 - P_c1[0][0], P_c1[2][1] * x0 - P_c1[0][1], P_c1[2][2] * x0 - P_c1[0][2], P_c1[2][3] * x0 - P_c1[0][3]],
-                 [P_c1[2][0] * y0 - P_c1[1][0], P_c1[2][1] * y0 - P_c1[1][1], P_c1[2][2] * y0 - P_c1[1][2], P_c1[2][3] * y0 - P_c1[1][3]],
-                 [P_c2[2][0] * x1 - P_c2[0][0], P_c2[2][1] * x1 - P_c2[0][1], P_c2[2][2] * x1 - P_c2[0][2], P_c2[2][3] * x1 - P_c2[0][3]],
-                 [P_c2[2][0] * y1 - P_c2[1][0], P_c2[2][1] * y1 - P_c2[1][1], P_c2[2][2] * y1 - P_c2[1][2], P_c2[2][3] * y1 - P_c2[1][3]]]);
+    A = np.zeros((4, 4))
+    A[0] = x0 * P_c1[2] - P_c1[0]
+    A[1] = y0 * P_c1[2] - P_c1[1]
+    A[2] = x1 * P_c2[2] - P_c2[0]
+    A[3] = y1 * P_c2[2] - P_c2[1]
     
-    U, S, Vt = np.linalg.svd(A)
-    X = Vt[-1, :];
-    X /= X[3];
+    _, _, V = np.linalg.svd(A)
+    X_homogeneous = V[-1, :]
+    X = X_homogeneous / X_homogeneous[3]
     
-    # Now lets calculate if the point is seen with both cameras
-    T_c2_c1_estimated0 = np.eye(4)
-    T_c2_c1_estimated0[:3, :3] = R0
-    T_c2_c1_estimated0[:3, 3] = t0
-    
-    T_c2_c1_estimated1 = np.eye(4)
-    T_c2_c1_estimated1[:3, :3] = R1
-    T_c2_c1_estimated1[:3, 3] = t1
-    
-    T_c2_c1_estimated2 = np.eye(4)
-    T_c2_c1_estimated2[:3, :3] = R2
-    T_c2_c1_estimated2[:3, 3] = t2
-    
-    T_c2_c1_estimated3 = np.eye(4)
-    T_c2_c1_estimated3[:3, :3] = R3
-    T_c2_c1_estimated3[:3, 3] = t3
-    
-    # I transform the points to the camera frames
+    # Transform the points to the camera frames
     X_c1 = T_c1_w @ X
     X_c2 = T_c2_w @ X
     
+    
     # I transform 
     X_c2_estimated0 = T_c2_c1_estimated0 @ X_c1
+    d0 = euclideanDistance3d(X_c2_estimated0, X_c2)
     X_c2_estimated1 = T_c2_c1_estimated1 @ X_c1
-    X_c2_estimated2 = T_c2_c1_estimated2 @ X_c1
+    d1 = euclideanDistance3d(X_c2_estimated1, X_c2)
+    X_c2_estimated2 = T_c2_c1_estimated2 @ X_c1 # this is the one, less euclidean distance
+    d2 = euclideanDistance3d(X_c2_estimated2, X_c2) 
     X_c2_estimated3 = T_c2_c1_estimated3 @ X_c1
+    d3 = euclideanDistance3d(X_c2_estimated3, X_c2)
     
-    # These are negative, not seen
-    X_cam2_1 = T_c2_c1_estimated1 @ X_c1
-    X_cam2_3 = T_c2_c1_estimated3 @ X_c1
-    
-    # Calculate the possibles P from P2 then we look in X_cam2_0 and X_cam2_2 which are positive, visible
-    P_c2_0_estimated = K_c @ P_canonical @ T_c2_c1_estimated0
-    A_0 = np.array([[P_c2_0_estimated[2][0] * x0 - P_c2_0_estimated[0][0], P_c2_0_estimated[2][1] * x0 - P_c2_0_estimated[0][1], P_c2_0_estimated[2][2] * x0 - P_c2_0_estimated[0][2], P_c2_0_estimated[2][3] * x0 - P_c2_0_estimated[0][3]],
-                 [P_c2_0_estimated[2][0] * y0 - P_c2_0_estimated[1][0], P_c2_0_estimated[2][1] * y0 - P_c2_0_estimated[1][1], P_c2_0_estimated[2][2] * y0 - P_c2_0_estimated[1][2], P_c2_0_estimated[2][3] * y0 - P_c2_0_estimated[1][3]],
-                 [P_c2_0_estimated[2][0] * x1 - P_c2_0_estimated[0][0], P_c2_0_estimated[2][1] * x1 - P_c2_0_estimated[0][1], P_c2_0_estimated[2][2] * x1 - P_c2_0_estimated[0][2], P_c2_0_estimated[2][3] * x1 - P_c2_0_estimated[0][3]],
-                 [P_c2_0_estimated[2][0] * y1 - P_c2_0_estimated[1][0], P_c2_0_estimated[2][1] * y1 - P_c2_0_estimated[1][1], P_c2_0_estimated[2][2] * y1 - P_c2_0_estimated[1][2], P_c2_0_estimated[2][3] * y1 - P_c2_0_estimated[1][3]]]);
-    
-    U, S, Vt = np.linalg.svd(A_0)
-    X_c2_e0 = Vt[-1, :];
-    X_c2_e0 /= X_c2_e0[3];
-    
-    P_c2_2_estimated = K_c @ P_canonical @  T_c2_c1_estimated2
-    A = np.array([[P_c2_2_estimated[2][0] * x0 - P_c2_2_estimated[0][0], P_c2_2_estimated[2][1] * x0 - P_c2_2_estimated[0][1], P_c2_2_estimated[2][2] * x0 - P_c2_2_estimated[0][2], P_c2_2_estimated[2][3] * x0 - P_c2_2_estimated[0][3]],
-                 [P_c2_2_estimated[2][0] * y0 - P_c2_2_estimated[1][0], P_c2_2_estimated[2][1] * y0 - P_c2_2_estimated[1][1], P_c2_2_estimated[2][2] * y0 - P_c2_2_estimated[1][2], P_c2_2_estimated[2][3] * y0 - P_c2_2_estimated[1][3]],
-                 [P_c2_2_estimated[2][0] * x1 - P_c2_2_estimated[0][0], P_c2_2_estimated[2][1] * x1 - P_c2_2_estimated[0][1], P_c2_2_estimated[2][2] * x1 - P_c2_2_estimated[0][2], P_c2_2_estimated[2][3] * x1 - P_c2_2_estimated[0][3]],
-                 [P_c2_2_estimated[2][0] * y1 - P_c2_2_estimated[1][0], P_c2_2_estimated[2][1] * y1 - P_c2_2_estimated[1][1], P_c2_2_estimated[2][2] * y1 - P_c2_2_estimated[1][2], P_c2_2_estimated[2][3] * y1 - P_c2_2_estimated[1][3]]]);
-    
-    U, S, Vt = np.linalg.svd(A)
-    X_c2 = Vt[-1, :];
-    X_c2 /= X_c2[3];
-    
-    
-
-    # Alejandro
-    """
-    E_c2_c1_estimated=(K_c.T)@F_c2_c1_estimated@K_c
-    U,S,V=np.linalg.svd(E_c2_c1_estimated)
-    print(S)
-    rank = np.linalg.matrix_rank(E_c2_c1_estimated)  
-    print(E_c2_c1_estimated)
-    print(rank)
-    U,S,V=np.linalg.svd(E_c2_c1_estimated)
-    S=np.array([[1,0,0],[0,1,0],[0,0,0]])
-    E_c2_c1_estimated = np.dot(U,np.dot(S,V))
-    rank = np.linalg.matrix_rank(E_c2_c1_estimated)   
-    print(E_c2_c1_estimated)
-    print(rank)
-    U,S,V=np.linalg.svd(E_c2_c1_estimated)
-    W=np.array([[0,-1,0],[1,0,0],[0,0,1]])
-    R1=U@W@V
-    R2=U@(W.T)@V
-    T1=U@S@U.T
-    T2=-U@S@U.T
-    
-    
-    print(R1.shape)
-    
-    Pose_1=np.hstack((R1,(T1.T).reshape(-1,1)))
-    Pose_2=np.hstack((R2,(T1.T).reshape(-1,1)))
-    Pose_3=np.hstack((R1,(T2.T).reshape(-1,1)))
-    Pose_4=np.hstack((R2,(T2.T).reshape(-1,1)))
-    print(Pose_1)
-    I_matrix=np.eye(3)
-    O_matrix=np.zeros((1,3))
-    I_matrix_2=np.hstack(I_matrix,O_matrix)
-    P1=K_c@I_matrix_2 
-    P2_1=K_c@Pose_1
-    P2_2=K_c@Pose_2 
-    P2_3=K_c@Pose_3
-    P2_4=K_c@Pose_4
-    Points_2=[]
-
-    r,c=x2Data.shape
-    for i in range (r):
-        new_row=[]
-        for j in range(c+1):
-            new_row.append()
-
-    X_1=np.linalg.inv(P2_1)@Points_2
-    X_2=np.linalg.inv(P2_2)@Points_2
-    X_3=np.linalg.inv(P2_3)@Points_2
-    X_4=np.linalg.inv(P2_4)@Points_2
-    """
     # Exercise 2.5: Visualization and comparison
-    T_c1_c2=T_c1_w@T_w_c2
-
     fig3D = plt.figure(6)
 
     ax = plt.axes(projection='3d', adjustable='box')
@@ -539,14 +408,11 @@ if __name__ == '__main__':
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
 
-    drawRefSystem(ax, T_w_c1, '-', 'C1')
-    drawRefSystem(ax, Pose_2, '-', 'C2_estimated')
-    drawRefSystem(ax, np.eye(4, 4), '-', 'W')
-    drawRefSystem(ax, T_w_c2, '-', 'C2')
+    drawRefSystem(ax, T_c2_c1_estimated2, '-', 'C2_estimated')
+    drawRefSystem(ax, T_c2_c1, '-', 'C2')
 
 
-    ax.scatter(X_w[0, :], X_w[1, :], X_w[2, :], marker='.')
-    plotNumbered3DPoints(ax, X_w, 'r', (0.1, 0.1, 0.1)) # For plotting with numbers (choose one of the both options)
+    ax.scatter([X_c2[0], X_c2_estimated2[0]], [X_c2[1], X_c2_estimated2[1]], [X_c2[2], X_c2_estimated2[2]], marker='.')
 
     #Matplotlib does not correctly manage the axis('equal')
     xFakeBoundingBox = np.linspace(0, 4, 2)
@@ -556,44 +422,7 @@ if __name__ == '__main__':
     print('Close the figure to continue. Left button for orbit, right button for zoom.')
     plt.show()
 
-    Point_C2_ext = T_w_c2 @ [0,0,0,1]
-    Point_C2_estimated = T_w_c1 @ np.linalg.inv(T_c2_c1_estimated0) @ [0,0,0,1] 
+    d2 = euclideanDistance3d(X_c2_estimated2, X_c2) 
     
-    dist = np.sqrt((Point_C2_ext[0] - Point_C2_estimated[0])**2 + (Point_C2_ext[1] - Point_C2_estimated[1])**2 + 
-                   (Point_C2_ext[2] - Point_C2_estimated[2])**2 + (Point_C2_ext[3] - Point_C2_estimated[3])**2)
-    
-    #-------------------------- EXERCISE 3 --------------------------#
-   
-    # Exercise 3.1: Homography definition
-    Pi_c1 = np.loadtxt('Pi_1.txt')
-    
-    n_Pi_c1 = Pi_c1[:3];
-    d = Pi_c1[3] / np.sqrt(Pi_c1[0] * Pi_c1[0] + Pi_c1[1] * Pi_c1[1] + Pi_c1[2] * Pi_c1[2]);
-    
-    H_c2_c1 = K_c @ (R_c2_c1 - (Transl_c2_c1.reshape(3,1) @ n_Pi_c1.reshape(1,3)) / Pi_c1[3]) @ np.linalg.inv(K_c)
-    H_c2_c1 = H_c2_c1 / H_c2_c1[2][2]
-    H_c2_c1_toPlot = H_c2_c1
-    
-    # Exercise 3.2: Point transfer visualization DO I HAVE TO MAKE THEM RANFOMLY?¿
-    #drawHomography();
-            
-    # Exercise 3.3: 
-    x1, y1, _ = np.loadtxt('x1FloorData.txt')
-    x2, y2, _ = np.loadtxt('x2FloorData.txt')
-    
-    A = []
-    for i in range(len(x1)):
-        A.append([x1[i], y1[i], 1, 0, 0, 0, -x2[i]*x1[i], -x2[i]*y1[i], -x2[i]])
-        A.append([0, 0, 0, x1[i], y1[i], 1, -y2[i]*x1[i], -y2[i]*y1[i], -y2[i]])
-    A = np.array(A)
-    print(A.shape)
-    
-    u, s, vh = np.linalg.svd(A);
-    H_c2_c1_estimated = vh[-1].reshape(3, 3)
-    
-    H_c2_c1_estimated = H_c2_c1_estimated / H_c2_c1_estimated[2][2]
-    H_c2_c1_toPlot = H_c2_c1_estimated
-    
-    drawHomography();
     
     
