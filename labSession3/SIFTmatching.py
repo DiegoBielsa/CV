@@ -16,7 +16,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2
+import cv2 
 import random
 
 def indexMatrixToMatchesList(matchesList):
@@ -61,8 +61,11 @@ def matchWith2NDRR(desc1, desc2, distRatio, minDist):
     for kDesc1 in range(nDesc1):
         dist = np.sqrt(np.sum((desc2 - desc1[kDesc1, :]) ** 2, axis=1))
         indexSort = np.argsort(dist)
-        if (dist[indexSort[0]] < minDist):
+        NNDR=dist[indexSort[0]]/dist[indexSort[1]]
+        if ((dist[indexSort[0]] < minDist) & (NNDR<distRatio)):
             matches.append([kDesc1, indexSort[0], dist[indexSort[0]]])
+
+
     return matches
 
 if __name__ == '__main__':
@@ -80,12 +83,12 @@ if __name__ == '__main__':
     image_pers_2 = cv2.imread(path_image_2)
 
     # Feature extraction
-    sift = cv2.SIFT_create(nfeatures=0, nOctaveLayers = 5, contrastThreshold = 0.02, edgeThreshold = 20, sigma = 0.5)
+    sift = cv2.SIFT_create(nfeatures=0, nOctaveLayers = 5, contrastThreshold = 0.04, edgeThreshold = 10, sigma = 0.5)
     keypoints_sift_1, descriptors_1 = sift.detectAndCompute(image_pers_1, None)
     keypoints_sift_2, descriptors_2 = sift.detectAndCompute(image_pers_2, None)
 
     distRatio = 0.8
-    minDist = 500
+    minDist = 200
     matchesList = matchWith2NDRR(descriptors_1, descriptors_2, distRatio, minDist)
     dMatchesList = indexMatrixToMatchesList(matchesList)
     dMatchesList = sorted(dMatchesList, key=lambda x: x.distance)
