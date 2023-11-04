@@ -55,7 +55,7 @@ if __name__ == '__main__':
     img1 = cv2.cvtColor(cv2.imread('labSession3/image1.png'), cv2.COLOR_BGR2RGB)
     img2 = cv2.cvtColor(cv2.imread('labSession3/image2.png'), cv2.COLOR_BGR2RGB)
 
-    #################################### RANSAC ####################################
+    
     superglue_matches_path = 'SuperGlueResultsLab3/image1_image2_matches.npz'
     npz = np.load(superglue_matches_path)
     keypoints0 = npz['keypoints0']
@@ -79,6 +79,7 @@ if __name__ == '__main__':
     
     #drawHomography(21);
     
+    #################################### RANSAC ####################################
     # parameters of random sample selection
     """spFrac = nOutliers/nInliers  # spurious fraction
     P = 0.999  # probability of selecting at least one sample without spurious
@@ -144,6 +145,6 @@ if __name__ == '__main__':
             votesMax = votes
             H_21_most_voted = H_21_estimated
            
-
-    #drawHomography(21);
+    H_21 = H_21_most_voted;
+    drawHomography(21);
     print(npz['matches'])
