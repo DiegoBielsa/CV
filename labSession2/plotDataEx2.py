@@ -360,8 +360,8 @@ if __name__ == '__main__':
     
     W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
     
-    R1 = U @ W @ V
-    R2 = U @ W.T @ V
+    R1 = U @ W @ V # calcular determinante
+    R2 = U @ W.T @ V # calculo determinante y si sale -1 la multiplico por -1yyy
     
     t1 = U[:, 2]
     t2 = -U[:, 2]

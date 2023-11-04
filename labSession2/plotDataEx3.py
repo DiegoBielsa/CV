@@ -140,7 +140,7 @@ def on_click_homography(event):
         plt.draw()  # We update the figure display
         print(f'You clicked at ({event.xdata}, {event.ydata})')
         p1 = np.array([event.xdata, event.ydata, 1])
-        p2 = np.dot(H_c2_c1, p1) # apply homography
+        p2 = np.dot(H_c2_c1_toPlot, p1) # apply homography
         p2 /= p2[2]
         plt.plot(p2[0], p2[1],'rx', markersize=10)
 
