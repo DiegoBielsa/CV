@@ -61,8 +61,8 @@ def matchWith2NDRR(desc1, desc2, distRatio, minDist):
     for kDesc1 in range(nDesc1):
         dist = np.sqrt(np.sum((desc2 - desc1[kDesc1, :]) ** 2, axis=1))
         indexSort = np.argsort(dist)
-        NNDR=dist[indexSort[0]]/dist[indexSort[1]]
-        if ((dist[indexSort[0]] < minDist) & (NNDR<distRatio)):
+        NNDR=dist[indexSort[0]] / dist[indexSort[1]]
+        if ((dist[indexSort[0]] < minDist) & (NNDR < distRatio)):
             matches.append([kDesc1, indexSort[0], dist[indexSort[0]]])
 
 
