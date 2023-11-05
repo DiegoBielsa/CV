@@ -53,16 +53,16 @@ def euclideanDistance2D(p1, p2):
 
 if __name__ == '__main__':
     
-    img1 = cv2.cvtColor(cv2.imread('labSession3/image1.png'), cv2.COLOR_BGR2RGB)
-    img2 = cv2.cvtColor(cv2.imread('labSession3/image2.png'), cv2.COLOR_BGR2RGB)
+    img1 = cv2.cvtColor(cv2.imread('image1.png'), cv2.COLOR_BGR2RGB)
+    img2 = cv2.cvtColor(cv2.imread('image2.png'), cv2.COLOR_BGR2RGB)
     
-    img_matches = cv2.cvtColor(cv2.imread('SuperGlueResultsLab3/image1_image2_matches.png'), cv2.COLOR_BGR2RGB)
+    img_matches = cv2.cvtColor(cv2.imread('../SuperGlueResultsLab3/image1_image2_matches.png'), cv2.COLOR_BGR2RGB)
     plt.imshow(img_matches, cmap='gray', vmin=0, vmax=255)
     plt.draw()
     plt.waitforbuttonpress()
 
     
-    superglue_matches_path = 'SuperGlueResultsLab3/image1_image2_matches.npz'
+    superglue_matches_path = '../SuperGlueResultsLab3/image1_image2_matches.npz'
     npz = np.load(superglue_matches_path)
     keypoints0 = npz['keypoints0']
     keypoints1 = npz['keypoints1']
