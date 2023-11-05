@@ -159,6 +159,9 @@ def getFundamentalMatrix(points1, points2):
 def distanceLinePoint(line, point):
     return abs(line[0] * point[0] + line[1] * point[1] + line[2]) / math.sqrt(line[0] ** 2 + line[1] ** 2)
 
+def euclideanDistance2D(p1, p2):
+    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
 if __name__ == '__main__':
     
     img1 = cv2.cvtColor(cv2.imread('image1.png'), cv2.COLOR_BGR2RGB)
@@ -360,4 +363,18 @@ if __name__ == '__main__':
     plt.imshow(result_img_final, cmap='gray', vmin=0, vmax=255)
     plt.draw()
     plt.waitforbuttonpress() 
+    
+    u, s, vh = np.linalg.svd(F_21_ground_truth.T);
+    e_ground_truth = vh[-1, :];
+    e_ground_truth = e_ground_truth / e_ground_truth[2]
+    u, s, vh = np.linalg.svd(F_21.T);
+    e_2 = vh[-1, :];
+    e_2 = e_2 / e_2[2]
+    print("Ground truth epipole:")
+    print(e_ground_truth)
+    print("Computed epipole:")
+    print(e_ground_truth)
+    print("Epipole error:")
+    print(euclideanDistance2D(e_ground_truth, e_2));
+    
     drawEpipolarLine(21);
