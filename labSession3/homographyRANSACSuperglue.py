@@ -4,17 +4,6 @@ import cv2
 import random
 import math
 
-def indexMatrixToMatchesList(matchesList):
-    """
-     -input:
-         matchesList: nMatches x 3 --> [[indexDesc1,indexDesc2,descriptorDistance],...]]
-     -output:
-        dMatchesList: list of n DMatch object
-     """
-    dMatchesList = []
-    for row in matchesList:
-        dMatchesList.append(cv2.DMatch(_queryIdx=row[0], _trainIdx=row[1], _distance=0))
-    return dMatchesList
 
 def on_click_homography(event):
     if event.button == 1:  # Left mouse button
