@@ -85,9 +85,6 @@ if __name__ == '__main__':
     x1 = np.array(x1);
     x2 = np.array(x2);
     matches_matrix = np.array(matches_matrix);
-    H_21 = getHomographyMatrix(x1, x2)
-    
-    #drawHomography(21);
     
     #################################### RANSAC ####################################
     # parameters of random sample selection
