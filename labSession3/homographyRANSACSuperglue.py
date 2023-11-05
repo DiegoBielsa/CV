@@ -4,6 +4,18 @@ import cv2
 import random
 import math
 
+def indexMatrixToMatchesList(matchesList):
+    """
+     -input:
+         matchesList: nMatches x 3 --> [[indexDesc1,indexDesc2,descriptorDistance],...]]
+     -output:
+        dMatchesList: list of n DMatch object
+     """
+    dMatchesList = []
+    for row in matchesList:
+        dMatchesList.append(cv2.DMatch(_queryIdx=row[0], _trainIdx=row[1], _distance=0))
+    return dMatchesList
+
 def on_click_homography(event):
     if event.button == 1:  # Left mouse button
         plt.figure(34)
@@ -44,7 +56,7 @@ def getHomographyMatrix(points1, points2):
     u, s, vh = np.linalg.svd(A);
     H_21_estimated = vh[-1].reshape(3, 3)
     
-    H_21_estimated = H_21_estimated / H_21_estimated[2][2]
+    #H_21_estimated = H_21_estimated / H_21_estimated[2][2]
     return H_21_estimated
 
 def euclideanDistance2D(p1, p2):
@@ -54,6 +66,11 @@ if __name__ == '__main__':
     
     img1 = cv2.cvtColor(cv2.imread('labSession3/image1.png'), cv2.COLOR_BGR2RGB)
     img2 = cv2.cvtColor(cv2.imread('labSession3/image2.png'), cv2.COLOR_BGR2RGB)
+    
+    img_matches = cv2.cvtColor(cv2.imread('SuperGlueResultsLab3/image1_image2_matches.png'), cv2.COLOR_BGR2RGB)
+    plt.imshow(img_matches, cmap='gray', vmin=0, vmax=255)
+    plt.draw()
+    plt.waitforbuttonpress()
 
     
     superglue_matches_path = 'SuperGlueResultsLab3/image1_image2_matches.npz'
@@ -65,6 +82,7 @@ if __name__ == '__main__':
     
     x1 = [];
     x2 = [];
+    matches_matrix = [];
 
     for i in range(matches.size):
         if matches[i] != -1: # here there is a match
@@ -72,9 +90,12 @@ if __name__ == '__main__':
             x1.append(match_x_0);
             match_x_1 = keypoints1[matches[i]];
             x2.append(match_x_1);
-            
+            matches_matrix.append([i, matches[i]])
+    
+    # We use only the matches on the floor, in order to compute the omography with respect to the floor plane
     x1 = np.array(x1);
     x2 = np.array(x2);
+    matches_matrix = np.array(matches_matrix);
     H_21 = getHomographyMatrix(x1, x2)
     
     #drawHomography(21);
@@ -101,6 +122,9 @@ if __name__ == '__main__':
     nVotesMax = 0
     votesMax = [False] * x1.shape[0];
     pMinSet = 4
+    p1_selected = []
+    p2_selected = []
+    
 
     for kAttempt in range(100):
     
@@ -124,6 +148,19 @@ if __name__ == '__main__':
         p2.append(x2[i3]);
         p2 = np.array(p2);
         
+        if kAttempt % 10 == 0:
+            # Each 10 iterations, the hypotesis is going to be shown
+            result_img_local = np.concatenate((img1, img2), axis=1)
+            for j in range(pMinSet):
+                x1_local = p1[j][0]
+                y1_local = p1[j][1]
+                x2_local = p2[j][0] + img1.shape[1]
+                y2_local = p2[j][1]
+                cv2.line(result_img_local, (int(x1_local), int(y1_local)), (int(x2_local), int(y2_local)), (0, 255, 0), 3)  # Draw a line between matches
+            plt.imshow(result_img_local, cmap='gray', vmin=0, vmax=255)
+            plt.draw()
+            plt.waitforbuttonpress()  
+        
         
         H_21_estimated = getHomographyMatrix(p1, p2);
         votes = [False] * x1.shape[0];
@@ -144,7 +181,22 @@ if __name__ == '__main__':
             nVotesMax = nVotes
             votesMax = votes
             H_21_most_voted = H_21_estimated
+            p1_selected = p1
+            p2_selected = p2
            
     H_21 = H_21_most_voted;
+    result_img_final = np.concatenate((img1, img2), axis=1)
+    x1_final = p1[j][0]
+    y1_final = p1[j][1]
+    x2_final = p2[j][0] + img1.shape[1]
+    y2_final = p2[j][1]
+    for j in range(pMinSet):
+        x1_final = p1[j][0]
+        y1_final = p1[j][1]
+        x2_final = p2[j][0] + img1.shape[1]
+        y2_final = p2[j][1]
+        cv2.line(result_img_final, (int(x1_final), int(y1_final)), (int(x2_final), int(y2_final)), (255, 0, 0), 3)  # Draw a line between matches
+    plt.imshow(result_img_final, cmap='gray', vmin=0, vmax=255)
+    plt.draw()
+    plt.waitforbuttonpress() 
     drawHomography(21);
-    print(npz['matches'])

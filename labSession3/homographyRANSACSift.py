@@ -108,8 +108,8 @@ def getHomographyMatrix(points1, points2):
     
     u, s, vh = np.linalg.svd(A);
     H_21_estimated = vh[-1].reshape(3, 3)
-    
-    H_21_estimated = H_21_estimated / H_21_estimated[2][2]
+
+    #H_21_estimated = H_21_estimated / H_21_estimated[2][2]
     return H_21_estimated
 
 def euclideanDistance2D(p1, p2):
@@ -160,6 +160,7 @@ if __name__ == '__main__':
     # Matched points in homogeneous coordinates
     #x1 = np.vstack((srcPts.T, np.ones((1, srcPts.shape[0]))))
     #x2 = np.vstack((dstPts.T, np.ones((1, dstPts.shape[0]))))
+    # We use only the matches on the front wall, in order to compute the omography with respect to the front wall plane
     x1 = srcPts;
     x2 = dstPts;
 
@@ -208,6 +209,19 @@ if __name__ == '__main__':
         p2.append(x2[i3]);
         p2 = np.array(p2);
         
+        if kAttempt % 10 == 0:
+            # Each 10 iterations, the hypotesis is going to be shown
+            result_img_local = np.concatenate((img1, img2), axis=1)
+            for j in range(pMinSet):
+                x1_local = p1[j][0]
+                y1_local = p1[j][1]
+                x2_local = p2[j][0] + img1.shape[1]
+                y2_local = p2[j][1]
+                cv2.line(result_img_local, (int(x1_local), int(y1_local)), (int(x2_local), int(y2_local)), (0, 255, 0), 3)  # Draw a line between matches
+            plt.imshow(result_img_local, cmap='gray', vmin=0, vmax=255)
+            plt.draw()
+            plt.waitforbuttonpress()  
+        
         
         H_21_estimated = getHomographyMatrix(p1, p2);
         votes = [False] * x1.shape[0];
@@ -230,4 +244,18 @@ if __name__ == '__main__':
             H_21_most_voted = H_21_estimated
            
     H_21 = H_21_most_voted;
+    result_img_final = np.concatenate((img1, img2), axis=1)
+    x1_final = p1[j][0]
+    y1_final = p1[j][1]
+    x2_final = p2[j][0] + img1.shape[1]
+    y2_final = p2[j][1]
+    for j in range(pMinSet):
+        x1_final = p1[j][0]
+        y1_final = p1[j][1]
+        x2_final = p2[j][0] + img1.shape[1]
+        y2_final = p2[j][1]
+        cv2.line(result_img_final, (int(x1_final), int(y1_final)), (int(x2_final), int(y2_final)), (255, 0, 0), 3)  # Draw a line between matches
+    plt.imshow(result_img_final, cmap='gray', vmin=0, vmax=255)
+    plt.draw()
+    plt.waitforbuttonpress() 
     drawHomography(21);
