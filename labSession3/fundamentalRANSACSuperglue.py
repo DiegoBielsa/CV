@@ -263,12 +263,13 @@ if __name__ == '__main__':
 
         # Now we calculate the votes regarding the euclidean distance between the matched point and the input one (assuming it is ok)
         for i in range(x1.shape[0]):
-            p1_to_estimate = np.array([x1[i][0], x1[i][1], 1]);
-            l2_estimated = np.dot(F_21_estimated, p1_to_estimate);
-            distance = distanceLinePoint(l2_estimated, x2[i])
-            if distance < RANSACThreshold:
-                votes[i] = True;
-                nVotes += 1;
+            if i != i0 and i != i1 and i != i2 and i != i3 and i != i4 and i != i5 and i != i6 and i != i7: 
+                p1_to_estimate = np.array([x1[i][0], x1[i][1], 1]);
+                l2_estimated = np.dot(F_21_estimated, p1_to_estimate);
+                distance = distanceLinePoint(l2_estimated, x2[i])
+                if distance < RANSACThreshold:
+                    votes[i] = True;
+                    nVotes += 1;
 
         if nVotes > nVotesMax:
             nVotesMax = nVotes
