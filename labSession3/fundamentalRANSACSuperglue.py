@@ -48,11 +48,11 @@ def on_click_epipolar(event):
         u, s, vh = np.linalg.svd(F_21_ground_truth.T);
         e_2 = vh[-1, :];
         e_2 = e_2 / e_2[2]
-        plt.plot(e_2[0], e_2[1],'rx', markersize=10)
+        #plt.plot(e_2[0], e_2[1],'rx', markersize=10)
         u, s, vh = np.linalg.svd(F_21.T);
         e_2 = vh[-1, :];
         e_2 = e_2 / e_2[2]
-        plt.plot(e_2[0], e_2[1],'bx', markersize=10)
+        #plt.plot(e_2[0], e_2[1],'bx', markersize=10)
         drawLine(l_xi_1, 'g-', 1)
                 
 
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     #################################### RANSAC ####################################
     # parameters of random sample selection
     inliersSigma = 1 #Standard deviation of inliers
-    spFrac = 0.5  # spurious fraction
+    """spFrac = 0.5  # spurious fraction
     minInliers = np.round(x1.shape[0] * 0.5);
     minInliers = minInliers.astype(int)
     P = minInliers / x1.shape[0]  # probability of selecting at least one sample without spurious
@@ -151,9 +151,10 @@ if __name__ == '__main__':
     # number m of random samples
     nAttempts = np.round(np.log(1 - P) / np.log(1 - np.power((1 - spFrac), pMinSet)))
     nAttempts = nAttempts.astype(int)
-    print('nAttempts = ' + str(nAttempts))
+    print('nAttempts = ' + str(nAttempts))"""
 
-
+    minInliers = np.round(x1.shape[0] * 0.74);
+    minInliers = minInliers.astype(int)
     RANSACThreshold = 3*inliersSigma
     
     nVotesMax = 0
@@ -166,7 +167,7 @@ if __name__ == '__main__':
     kAttempt = 0
     
 
-    while kAttempt <= nAttempts:
+    while nVotesMax < minInliers:
     
         # Compute the minimal set defining your model
         i0 = random.randint(0, x1.shape[0] - 1)
@@ -241,7 +242,7 @@ if __name__ == '__main__':
         p2 = np.array(p2);
        
         
-        """ if kAttempt % 500 == 0:
+        if kAttempt % 100 == 0:
             # Each 10 iterations, the hypotesis is going to be shown
             result_img_local = np.concatenate((img1, img2), axis=1)
             for j in range(pMinSet):
@@ -252,12 +253,16 @@ if __name__ == '__main__':
                 cv2.line(result_img_local, (int(x1_local), int(y1_local)), (int(x2_local), int(y2_local)), (0, 255, 0), 3)  # Draw a line between matches
             plt.imshow(result_img_local, cmap='gray', vmin=0, vmax=255)
             plt.draw()
-            plt.waitforbuttonpress()""" 
+            plt.waitforbuttonpress()
         
         
-        F_21_estimated = getFundamentalMatrix(p1, p2);
+        F_21_estimated = getFundamentalMatrix(p1_norm, p2_norm);
         #For unnormalizing the resulting F matrix, before evaluating the matches:
-        #F_21_estimated = N2.T @ Fn_21_estimated @ N1
+        F_21_estimated = N2.T @ F_21_estimated @ N1
+        
+        F_12_estimated = getFundamentalMatrix(p2_norm, p1_norm);
+        #For unnormalizing the resulting F matrix, before evaluating the matches:
+        F_12_estimated = N1.T @ F_12_estimated @ N2
         votes = [False] * x1.shape[0];
         nVotes = 0;
 
@@ -266,8 +271,12 @@ if __name__ == '__main__':
             if i != i0 and i != i1 and i != i2 and i != i3 and i != i4 and i != i5 and i != i6 and i != i7: 
                 p1_to_estimate = np.array([x1[i][0], x1[i][1], 1]);
                 l2_estimated = np.dot(F_21_estimated, p1_to_estimate);
-                distance = distanceLinePoint(l2_estimated, x2[i])
-                if distance < RANSACThreshold:
+                distance1 = distanceLinePoint(l2_estimated, x2[i]);
+                
+                p2_to_estimate = np.array([x2[i][0], x2[i][1], 1]);
+                l1_estimated = np.dot(F_12_estimated, p2_to_estimate);
+                distance2 = distanceLinePoint(l1_estimated, x1[i]);
+                if distance1 < RANSACThreshold and distance2 < RANSACThreshold:
                     votes[i] = True;
                     nVotes += 1;
 
@@ -277,11 +286,7 @@ if __name__ == '__main__':
             F_21_most_voted = F_21_estimated
             p1_selected = p1
             p2_selected = p2
-            spFrac = (x1.shape[0]-nVotes) / nVotes;
-            nAttempts = np.round(np.log(1 - P) / np.log(1 - np.power((1 - spFrac), pMinSet)))
-            nAttempts = nAttempts.astype(int)
             
-        kAttempt += 1
             
            
     F_21 = F_21_most_voted;
@@ -307,7 +312,7 @@ if __name__ == '__main__':
     print("Ground truth epipole:")
     print(e_ground_truth)
     print("Computed epipole:")
-    print(e_ground_truth)
+    print(e_2)
     print("Epipole error:")
     print(euclideanDistance2D(e_ground_truth, e_2));
     

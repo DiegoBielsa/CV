@@ -88,31 +88,31 @@ if __name__ == '__main__':
     
     #################################### RANSAC ####################################
     # parameters of random sample selection
-    """spFrac = nOutliers/nInliers  # spurious fraction
-    P = 0.999  # probability of selecting at least one sample without spurious
+    inliersSigma = 1 #Standard deviation of inliers
+    spFrac = 0.8  # spurious fraction
+    minInliers = np.round(x1.shape[0] * 0.7);
+    minInliers = minInliers.astype(int)
+    P = minInliers / x1.shape[0]  # probability of selecting at least one sample without spurious
     pMinSet = 4  # we need 4 matches at least to compute the H matrix
-    thresholdFactor = 1.96  # a point is spurious if abs(r/s)>factor Threshold
 
     # number m of random samples
     nAttempts = np.round(np.log(1 - P) / np.log(1 - np.power((1 - spFrac), pMinSet)))
     nAttempts = nAttempts.astype(int)
     print('nAttempts = ' + str(nAttempts))
 
-    nElements = x.shape[1]
 
     RANSACThreshold = 3*inliersSigma
-    nVotesMax = 0
-    rng = np.random.default_rng()"""
     
-    RANSACThreshold = 12
     nVotesMax = 0
     votesMax = [False] * x1.shape[0];
-    pMinSet = 4
+    
     p1_selected = []
     p2_selected = []
+    F_21_most_voted = []
+    kAttempt = 0
     
 
-    for kAttempt in range(100):
+    while kAttempt <= nAttempts:
     
         # Compute the minimal set defining your model
         i0 = random.randint(0, x1.shape[0] - 1)
@@ -169,18 +169,19 @@ if __name__ == '__main__':
             H_21_most_voted = H_21_estimated
             p1_selected = p1
             p2_selected = p2
+            spFrac = (x1.shape[0]-nVotes) / x1.shape[0];
+            nAttempts = np.round(np.log(1 - P) / np.log(1 - np.power((1 - spFrac), pMinSet)))
+            nAttempts = nAttempts.astype(int)
+            
+        kAttempt += 1
            
     H_21 = H_21_most_voted;
     result_img_final = np.concatenate((img1, img2), axis=1)
-    x1_final = p1[j][0]
-    y1_final = p1[j][1]
-    x2_final = p2[j][0] + img1.shape[1]
-    y2_final = p2[j][1]
     for j in range(pMinSet):
-        x1_final = p1[j][0]
-        y1_final = p1[j][1]
-        x2_final = p2[j][0] + img1.shape[1]
-        y2_final = p2[j][1]
+        x1_final = p1_selected[j][0]
+        y1_final = p1_selected[j][1]
+        x2_final = p2_selected[j][0] + img1.shape[1]
+        y2_final = p2_selected[j][1]
         cv2.line(result_img_final, (int(x1_final), int(y1_final)), (int(x2_final), int(y2_final)), (255, 0, 0), 3)  # Draw a line between matches
     plt.imshow(result_img_final, cmap='gray', vmin=0, vmax=255)
     plt.draw()
