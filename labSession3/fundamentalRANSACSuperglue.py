@@ -76,9 +76,9 @@ def getFundamentalMatrix(points1, points2):
     A = []
 
     for i in range(x1Data.shape[1]):
-        x0, y0 = x1Data[:, i]
-        x1, y1 = x2Data[:, i]
-        A.append([x0*x1, y0*x1, x1, x0*y1, y0*y1, y1, x0, y0, 1])
+        x0, y0, w0 = x1Data[:, i]
+        x1, y1, w1 = x2Data[:, i]
+        A.append([x0*x1, y0*x1, w0*x1, x0*y1, y0*y1, w0*y1, x0*w1, y0*w1, w0*w1])
         
     A = np.array(A)
     _, _, V = np.linalg.svd(A)
@@ -141,32 +141,30 @@ if __name__ == '__main__':
     
     #################################### RANSAC ####################################
     # parameters of random sample selection
-    """spFrac = nOutliers/nInliers  # spurious fraction
+    inliersSigma = 1 #Standard deviation of inliers
+    spFrac = 0.4  # spurious fraction
     P = 0.999  # probability of selecting at least one sample without spurious
-    pMinSet = 4  # we need 4 matches at least to compute the H matrix
-    thresholdFactor = 1.96  # a point is spurious if abs(r/s)>factor Threshold
+    pMinSet = 8  # we need 8 matches at least to compute the F matrix
 
     # number m of random samples
     nAttempts = np.round(np.log(1 - P) / np.log(1 - np.power((1 - spFrac), pMinSet)))
     nAttempts = nAttempts.astype(int)
     print('nAttempts = ' + str(nAttempts))
 
-    nElements = x.shape[1]
 
     RANSACThreshold = 3*inliersSigma
-    nVotesMax = 0
-    rng = np.random.default_rng()"""
     
-    RANSACThreshold = 12
     nVotesMax = 0
     votesMax = [False] * x1.shape[0];
     pMinSet = 8
+    minInliers = 150
     p1_selected = []
     p2_selected = []
     F_21_most_voted = []
+    kAttempt = 0
     
 
-    for kAttempt in range(100):
+    while kAttempt <= nAttempts:
     
         # Compute the minimal set defining your model
         i0 = random.randint(0, x1.shape[0] - 1)
@@ -181,67 +179,67 @@ if __name__ == '__main__':
         # Normalized to compute F norm
         p1_norm = [];
         x1Norm = N1 @ np.array([x1[i0][0], x1[i0][1], 1]);
-        p1_norm.append([x1Norm[0], x1Norm[1]]);
+        p1_norm.append(x1Norm);
         x1Norm = N1 @ np.array([x1[i1][0], x1[i1][1], 1]);
-        p1_norm.append([x1Norm[0], x1Norm[1]]);
+        p1_norm.append(x1Norm);
         x1Norm = N1 @ np.array([x1[i2][0], x1[i2][1], 1]);
-        p1_norm.append([x1Norm[0], x1Norm[1]]);
+        p1_norm.append(x1Norm);
         x1Norm = N1 @ np.array([x1[i3][0], x1[i3][1], 1]);
-        p1_norm.append([x1Norm[0], x1Norm[1]]);
+        p1_norm.append(x1Norm);
         x1Norm = N1 @ np.array([x1[i4][0], x1[i4][1], 1]);
-        p1_norm.append([x1Norm[0], x1Norm[1]]);
+        p1_norm.append(x1Norm);
         x1Norm = N1 @ np.array([x1[i5][0], x1[i5][1], 1]);
-        p1_norm.append([x1Norm[0], x1Norm[1]]);
+        p1_norm.append(x1Norm);
         x1Norm = N1 @ np.array([x1[i6][0], x1[i6][1], 1]);
-        p1_norm.append([x1Norm[0], x1Norm[1]]);
+        p1_norm.append(x1Norm);
         x1Norm = N1 @ np.array([x1[i7][0], x1[i7][1], 1]);
-        p1_norm.append([x1Norm[0], x1Norm[1]]);
+        p1_norm.append(x1Norm);
         p1_norm = np.array(p1_norm);
         
         p2_norm = [];
         x2Norm = N2 @ np.array([x2[i0][0], x2[i0][1], 1]);
-        p2_norm.append([x2Norm[0], x2Norm[1]]);
+        p2_norm.append(x2Norm);
         x2Norm = N2 @ np.array([x2[i1][0], x2[i1][1], 1]);
-        p2_norm.append([x2Norm[0], x2Norm[1]]);
+        p2_norm.append(x2Norm);
         x2Norm = N2 @ np.array([x2[i2][0], x2[i2][1], 1]);
-        p2_norm.append([x2Norm[0], x2Norm[1]]);
+        p2_norm.append(x2Norm);
         x2Norm = N2 @ np.array([x2[i3][0], x2[i3][1], 1]);
-        p2_norm.append([x2Norm[0], x2Norm[1]]);
+        p2_norm.append(x2Norm);
         x2Norm = N2 @ np.array([x2[i4][0], x2[i4][1], 1]);
-        p2_norm.append([x2Norm[0], x2Norm[1]]);
+        p2_norm.append(x2Norm);
         x2Norm = N2 @ np.array([x2[i5][0], x2[i5][1], 1]);
-        p2_norm.append([x2Norm[0], x2Norm[1]]);
+        p2_norm.append(x2Norm);
         x2Norm = N2 @ np.array([x2[i6][0], x2[i6][1], 1]);
-        p2_norm.append([x2Norm[0], x2Norm[1]]);
+        p2_norm.append(x2Norm);
         x2Norm = N2 @ np.array([x2[i7][0], x2[i7][1], 1]);
-        p2_norm.append([x2Norm[0], x2Norm[1]]);
+        p2_norm.append(x2Norm);
         p2_norm = np.array(p2_norm);
         
         # Not normalized to plot
         p1 = [];
-        p1.append(x1[i0]);
-        p1.append(x1[i1]);
-        p1.append(x1[i2]);
-        p1.append(x1[i3]);
-        p1.append(x1[i4]);
-        p1.append(x1[i5]);
-        p1.append(x1[i6]);
-        p1.append(x1[i7]);
+        p1.append([x1[i0][0], x1[i0][1], 1]);
+        p1.append([x1[i1][0], x1[i1][1], 1]);
+        p1.append([x1[i2][0], x1[i2][1], 1]);
+        p1.append([x1[i3][0], x1[i3][1], 1]);
+        p1.append([x1[i4][0], x1[i4][1], 1]);
+        p1.append([x1[i5][0], x1[i5][1], 1]);
+        p1.append([x1[i6][0], x1[i6][1], 1]);
+        p1.append([x1[i7][0], x1[i7][1], 1]);
         p1 = np.array(p1);
         
         p2 = [];
-        p2.append(x2[i0]);
-        p2.append(x2[i1]);
-        p2.append(x2[i2]);
-        p2.append(x2[i3]);
-        p2.append(x2[i4]);
-        p2.append(x2[i5]);
-        p2.append(x2[i6]);
-        p2.append(x2[i7]);
+        p2.append([x2[i0][0], x2[i0][1], 1]);
+        p2.append([x2[i1][0], x2[i1][1], 1]);
+        p2.append([x2[i2][0], x2[i2][1], 1]);
+        p2.append([x2[i3][0], x2[i3][1], 1]);
+        p2.append([x2[i4][0], x2[i4][1], 1]);
+        p2.append([x2[i5][0], x2[i5][1], 1]);
+        p2.append([x2[i6][0], x2[i6][1], 1]);
+        p2.append([x2[i7][0], x2[i7][1], 1]);
         p2 = np.array(p2);
        
         
-        if kAttempt % 10 == 0:
+        if kAttempt % 100 == 0:
             # Each 10 iterations, the hypotesis is going to be shown
             result_img_local = np.concatenate((img1, img2), axis=1)
             for j in range(pMinSet):
@@ -271,12 +269,18 @@ if __name__ == '__main__':
                     votes[i] = True;
                     nVotes += 1;
 
-        if nVotes > nVotesMax:
+        if nVotes > nVotesMax and nVotes > minInliers:
             nVotesMax = nVotes
             votesMax = votes
             F_21_most_voted = F_21_estimated
             p1_selected = p1
             p2_selected = p2
+            spFrac = (x1.shape[0]-nVotes) / nVotes;
+            nAttempts = np.round(np.log(1 - P) / np.log(1 - np.power((1 - spFrac), pMinSet)))
+            nAttempts = nAttempts.astype(int)
+            
+        kAttempt += 1
+            
            
     F_21 = F_21_most_voted;
     result_img_final = np.concatenate((img1, img2), axis=1)
@@ -289,6 +293,8 @@ if __name__ == '__main__':
     plt.imshow(result_img_final, cmap='gray', vmin=0, vmax=255)
     plt.draw()
     plt.waitforbuttonpress() 
+    
+    print(F_21)
     
     u, s, vh = np.linalg.svd(F_21_ground_truth.T);
     e_ground_truth = vh[-1, :];
