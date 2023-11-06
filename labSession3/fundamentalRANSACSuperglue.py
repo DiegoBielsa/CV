@@ -142,8 +142,10 @@ if __name__ == '__main__':
     #################################### RANSAC ####################################
     # parameters of random sample selection
     inliersSigma = 1 #Standard deviation of inliers
-    spFrac = 0.4  # spurious fraction
-    P = 0.999  # probability of selecting at least one sample without spurious
+    spFrac = 0.5  # spurious fraction
+    minInliers = np.round(x1.shape[0] * 0.5);
+    minInliers = minInliers.astype(int)
+    P = minInliers / x1.shape[0]  # probability of selecting at least one sample without spurious
     pMinSet = 8  # we need 8 matches at least to compute the F matrix
 
     # number m of random samples
@@ -157,7 +159,7 @@ if __name__ == '__main__':
     nVotesMax = 0
     votesMax = [False] * x1.shape[0];
     pMinSet = 8
-    minInliers = 150
+    
     p1_selected = []
     p2_selected = []
     F_21_most_voted = []
@@ -239,7 +241,7 @@ if __name__ == '__main__':
         p2 = np.array(p2);
        
         
-        if kAttempt % 100 == 0:
+        """ if kAttempt % 500 == 0:
             # Each 10 iterations, the hypotesis is going to be shown
             result_img_local = np.concatenate((img1, img2), axis=1)
             for j in range(pMinSet):
@@ -250,12 +252,12 @@ if __name__ == '__main__':
                 cv2.line(result_img_local, (int(x1_local), int(y1_local)), (int(x2_local), int(y2_local)), (0, 255, 0), 3)  # Draw a line between matches
             plt.imshow(result_img_local, cmap='gray', vmin=0, vmax=255)
             plt.draw()
-            plt.waitforbuttonpress()  
+            plt.waitforbuttonpress()""" 
         
         
-        Fn_21_estimated = getFundamentalMatrix(p1_norm, p2_norm);
+        F_21_estimated = getFundamentalMatrix(p1, p2);
         #For unnormalizing the resulting F matrix, before evaluating the matches:
-        F_21_estimated = N2.T @ Fn_21_estimated @ N1
+        #F_21_estimated = N2.T @ Fn_21_estimated @ N1
         votes = [False] * x1.shape[0];
         nVotes = 0;
 
