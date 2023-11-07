@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 
-F_21 = np.loadtxt('F_21_test.txt')
+F_21 = np.loadtxt('F_21.txt')
 H_c2_c1_toPlot = [];
 
 def drawLine(l,strFormat,lWidth):
@@ -270,29 +270,8 @@ if __name__ == '__main__':
     print('Click in the image to continue...')
     plt.waitforbuttonpress()
     
-    #-------------------------- EXERCISE 2 --------------------------#
+    #-------------------------- Get F --------------------------#
     
-    # Exercise 2.1: epipolar lines with given F_c2_c1
-    #drawEpipolarLine(12);
-    
-    # Exercise 2.2: Calculate E_c2_c1 and F_c2_c1
-    
-    T_c2_c1 = T_c2_w @ T_w_c1;
-    
-    R_c2_c1 = T_c2_c1[:3, :3];
-    Transl_c2_c1 = T_c2_c1[:3, 3];
-    
-    Transl_c2_c1_mod = np.array([[0, -Transl_c2_c1[2], Transl_c2_c1[1]],
-                                 [Transl_c2_c1[2], 0, -Transl_c2_c1[0]],
-                                 [-Transl_c2_c1[1], Transl_c2_c1[0], 0]]);
-    
-    E_c2_c1 = np.dot(Transl_c2_c1_mod, R_c2_c1);
-    
-    F_c2_c1 = np.linalg.inv(K_c).T @ E_c2_c1 @ np.linalg.inv(K_c);
-    
-    F_21 = F_c2_c1;
-    
-    #drawEpipolarLine(13);
     
     # Exercise 2.3: Compute F by estimation with 8 correspondences
     x1Data = np.loadtxt('x1Data.txt')
@@ -353,7 +332,7 @@ if __name__ == '__main__':
     
     # Exercise 2.4: Estimate camera poses from F21
     
-    E_c2_c1_estimated = (K_c.T) @ F_c2_c1 @ K_c
+    E_c2_c1_estimated = (K_c.T) @ F_c2_c1_estimated @ K_c
     
     U, _, V = np.linalg.svd(E_c2_c1_estimated)
     
@@ -361,7 +340,14 @@ if __name__ == '__main__':
     W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
     
     R1 = U @ W @ V # calcular determinante
+    np.linalg.det(R1);
+    if np.linalg.det(R1) == -1:
+        R1 *= -1
     R2 = U @ W.T @ V # calculo determinante y si sale -1 la multiplico por -1yyy
+    np.linalg.det(R2);
+    if np.linalg.det(R2) == -1:
+        R2 *= -1
+    
     
     t1 = U[:, 2]
     t2 = -U[:, 2]

@@ -153,7 +153,7 @@ if __name__ == '__main__':
     nAttempts = nAttempts.astype(int)
     print('nAttempts = ' + str(nAttempts))"""
 
-    minInliers = np.round(x1.shape[0] * 0.74);
+    minInliers = np.round(x1.shape[0] * 0.76);
     minInliers = minInliers.astype(int)
     RANSACThreshold = 3*inliersSigma
     
@@ -242,7 +242,7 @@ if __name__ == '__main__':
         p2 = np.array(p2);
        
         
-        if kAttempt % 100 == 0:
+        """if kAttempt % 100 == 0:
             # Each 10 iterations, the hypotesis is going to be shown
             result_img_local = np.concatenate((img1, img2), axis=1)
             for j in range(pMinSet):
@@ -253,7 +253,7 @@ if __name__ == '__main__':
                 cv2.line(result_img_local, (int(x1_local), int(y1_local)), (int(x2_local), int(y2_local)), (0, 255, 0), 3)  # Draw a line between matches
             plt.imshow(result_img_local, cmap='gray', vmin=0, vmax=255)
             plt.draw()
-            plt.waitforbuttonpress()
+            plt.waitforbuttonpress()"""
         
         
         F_21_estimated = getFundamentalMatrix(p1_norm, p2_norm);

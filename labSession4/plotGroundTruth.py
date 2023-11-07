@@ -24,6 +24,86 @@ import csv
 import scipy as sc
 import scipy.optimize as scOptim
 import scipy.io as sio
+import math as math
+
+def crossMatrixInv(M):
+    x = [M[2, 1], M[0, 2], M[1, 0]]
+    return x
+def crossMatrix(x):
+    M = np.array([[0, -x[2], x[1]],
+        [x[2], 0, -x[0]],
+        [-x[1], x[0], 0]], dtype="object")
+    return M
+
+#theta = crossMatrixInv(sc.linalg.logm(R))
+
+def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
+    """
+    -input:
+        Op: Optimization parameters: this must include a
+            paramtrization for T_21 (reference 1 seen from reference 2) Op = [theta_transl(incl), phi (athimuth), theta1, theta2, theta3, x, y, z, w]
+            in a proper way and for X1 (3D points in ref 1, our 3d points)             
+        x1Data: (3xnPoints) 2D points on image 1 (homogeneous
+            coordinates) [[x], [y], [w]]
+        x2Data: (3xnPoints) 2D points on image 2 (homogeneous
+            coordinates) [[x], [y], [w]]
+        K_c: (3x3) Intrinsic calibration matrix
+        nPoints: Number of points
+    -output:
+        res: residuals from the error between the 2D matched points
+            and the projected points from the 3D points
+            (2 equations/residuals per 2D point)
+    """
+    ######################### Get params #########################
+    theta = np.array([Op[2], Op[3], Op[4]])
+    R_c2_c1 = sc.linalg.expm(crossMatrix(theta))
+    t_c2_c1 = np.array([np.sin(Op[0]) * np.cos(Op[1]), np.sin(Op[0]) * np.sin(Op[1]), np.cos(Op[0])])
+    T_c2_c1 = np.vstack((np.hstack((R_c2_c1, t_c2_c1[:, np.newaxis])), [0, 0, 0, 1]))
+    
+    P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
+    P_c1 = K_c @ P_canonical;
+    P_c2 = K_c @ P_canonical @ T_c2_c1;
+    
+    ######################### Get 3D points in cam 1 and 2 #########################
+    p3D_1 = []
+    for i in range(0, nPoints * 4, 4):
+        x = Op[i + 5]
+        y = Op[i + 6]
+        z = Op[i + 7]
+        w = Op[i + 8]
+        p3D_1.append(np.array([x,y,x,w]))
+    p3D_1 = p3D_1.T;
+    
+    p3D_2 = []
+    for i in range(p3D_1.shape[1]):
+        p3D_2.append(T_c2_c1 @ p3D_1[:, i])
+    p3D_2 = np.array(p3D_2);
+    
+    ######################### Project 3d points to each camera #########################
+    p2D_1 = [];
+    p2D_2 = [];
+    for i in range(p3D_1.shape[1]):
+        p2D_1.append(P_c1 @ p3D_1[:, i])
+        p2D_2.append(P_c2 @ p3D_2[:, i])
+    p2D_1 = np.array(p2D_1);
+    p2D_2 = np.array(p2D_2);
+    
+    loss = [];
+    for i in range(nPoints):
+        e_1x = x1Data[0, i] - p2D_1[0, i];
+        e_1y = x1Data[1, i] - p2D_1[1, i];
+        e_2x = x2Data[0, i] - p2D_2[0, i];
+        e_2y = x2Data[1, i] - p2D_2[1, i];
+        loss.append(e_1x);
+        loss.append(e_1y);
+        loss.append(e_2x);
+        loss.append(e_2y);
+    #loss = np.array(loss);
+    return loss;
+
+    
+    
+    
 
 def indexMatrixToMatchesList(matchesList):
     """
@@ -118,6 +198,28 @@ def drawRefSystem(ax, T_w_c, strStyle, nameStr):
     draw3DLine(ax, T_w_c[0:3, 3:4], T_w_c[0:3, 3:4] + T_w_c[0:3, 1:2], strStyle, 'g', 1)
     draw3DLine(ax, T_w_c[0:3, 3:4], T_w_c[0:3, 3:4] + T_w_c[0:3, 2:3], strStyle, 'b', 1)
     ax.text(np.squeeze( T_w_c[0, 3]+0.1), np.squeeze( T_w_c[1, 3]+0.1), np.squeeze( T_w_c[2, 3]+0.1), nameStr)
+    
+def getFundamentalMatrix(points1, points2):
+    x1Data = points1.T
+    x2Data = points2.T
+    
+    A = []
+
+    for i in range(x1Data.shape[1]):
+        x0, y0, w0 = x1Data[:, i]
+        x1, y1, w1 = x2Data[:, i]
+        A.append([x0*x1, y0*x1, w0*x1, x0*y1, y0*y1, w0*y1, x0*w1, y0*w1, w0*w1])
+        
+    A = np.array(A)
+    _, _, V = np.linalg.svd(A)
+    F_c2_c1_estimated = V[-1].reshape(3, 3)
+    rank = np.linalg.matrix_rank(F_c2_c1_estimated)
+    U, S, V = np.linalg.svd(F_c2_c1_estimated)
+    S[2:]=0
+    F_c2_c1_estimated = np.dot(U,np.dot(np.diag(S),V))
+    rank = np.linalg.matrix_rank(F_c2_c1_estimated)
+    
+    return F_c2_c1_estimated
 
 if __name__ == '__main__':
     np.set_printoptions(precision=4,linewidth=1024,suppress=True)
@@ -125,8 +227,9 @@ if __name__ == '__main__':
 
     # Load ground truth
     T_wc1 = np.loadtxt('T_w_c1.txt')
-    T_wc2 = np.loadtxt('T_w_c2.txt')
+    T_wc2 = np.loadtxt('T_w_c2.txt')                                    
     T_wc3 = np.loadtxt('T_w_c3.txt')
+    F_21 = np.loadtxt('F_21.txt')
     K_c = np.loadtxt('K_c.txt')
     X_w = np.loadtxt('X_w.txt')
 
@@ -241,3 +344,78 @@ if __name__ == '__main__':
     plt.title('Image 3')
     print('Close the figures to continue.')
     plt.show()
+    
+    # ----------------------------- USING OUR F -----------------------------
+    """T_w_c1 = np.loadtxt('T_w_c1.txt')
+    T_w_c2 = np.loadtxt('T_w_c2.txt')
+    
+    T_c1_w = np.linalg.inv(T_w_c1);
+    T_c2_w = np.linalg.inv(T_w_c2);
+    
+    K_c = np.loadtxt('K_c.txt')
+    X_w = np.loadtxt('X_w.txt')
+    
+    # Canonical perspective projection matrix
+    P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
+    
+    P_c1 = K_c @ P_canonical @ T_c1_w;
+    P_c2 = K_c @ P_canonical @ T_c2_w;
+    
+    # Exercise 2.3: Compute F by estimation with 8 correspondences
+    F_c2_c1_estimated = getFundamentalMatrix();
+    
+    E_c2_c1_estimated = (K_c.T) @ F_c2_c1_estimated @ K_c
+    
+    U, _, V = np.linalg.svd(E_c2_c1_estimated)
+    
+    
+    W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+    
+    R1 = U @ W @ V # calcular determinante
+    np.linalg.det(R1);
+    if np.linalg.det(R1) == -1:
+        R1 *= -1
+    R2 = U @ W.T @ V # calculo determinante y si sale -1 la multiplico por -1yyy
+    np.linalg.det(R2);
+    if np.linalg.det(R2) == -1:
+        R2 *= -1
+    
+    
+    t1 = U[:, 2]
+    t2 = -U[:, 2]
+    
+    T_c2_c1_estimated0 = np.vstack((np.hstack((R1, t1[:, np.newaxis])), [0, 0, 0, 1]))
+    T_c2_c1_estimated1 = np.vstack((np.hstack((R1, t2[:, np.newaxis])), [0, 0, 0, 1]))
+    T_c2_c1_estimated2 = np.vstack((np.hstack((R2, t1[:, np.newaxis])), [0, 0, 0, 1]))
+    T_c2_c1_estimated3 = np.vstack((np.hstack((R2, t2[:, np.newaxis])), [0, 0, 0, 1]))
+    
+    # Triangulation of one point (The first one for example)
+    
+    x0, y0 = x1Data[:, 0]
+    x1, y1 = x2Data[:, 0]
+    A = np.zeros((4, 4))
+    A[0] = x0 * P_c1[2] - P_c1[0]
+    A[1] = y0 * P_c1[2] - P_c1[1]
+    A[2] = x1 * P_c2[2] - P_c2[0]
+    A[3] = y1 * P_c2[2] - P_c2[1]
+    
+    _, _, V = np.linalg.svd(A)
+    X_homogeneous = V[-1, :]
+    X = X_homogeneous / X_homogeneous[3]
+    
+    # Transform the points to the camera frames
+    X_c1 = T_c1_w @ X
+    X_c2 = T_c2_w @ X
+    
+    
+    # I transform 
+    X_c2_estimated0 = T_c2_c1_estimated0 @ X_c1
+    d0 = euclideanDistance3d(X_c2_estimated0, X_c2)
+    X_c2_estimated1 = T_c2_c1_estimated1 @ X_c1
+    d1 = euclideanDistance3d(X_c2_estimated1, X_c2)
+    X_c2_estimated2 = T_c2_c1_estimated2 @ X_c1 # this is the one, less euclidean distance
+    d2 = euclideanDistance3d(X_c2_estimated2, X_c2) 
+    X_c2_estimated3 = T_c2_c1_estimated3 @ X_c1
+    d3 = euclideanDistance3d(X_c2_estimated3, X_c2)"""
+    
+    
