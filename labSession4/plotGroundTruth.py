@@ -26,83 +26,21 @@ import scipy.optimize as scOptim
 import scipy.io as sio
 import math as math
 
-def crossMatrixInv(M):
-    x = [M[2, 1], M[0, 2], M[1, 0]]
-    return x
-def crossMatrix(x):
-    M = np.array([[0, -x[2], x[1]],
-        [x[2], 0, -x[0]],
-        [-x[1], x[0], 0]], dtype="object")
-    return M
-
-#theta = crossMatrixInv(sc.linalg.logm(R))
-
-def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
+def drawLine(l,strFormat,lWidth):
     """
+    Draw a line
     -input:
-        Op: Optimization parameters: this must include a
-            paramtrization for T_21 (reference 1 seen from reference 2) Op = [theta_transl(incl), phi (athimuth), theta1, theta2, theta3, x, y, z, w]
-            in a proper way and for X1 (3D points in ref 1, our 3d points)             
-        x1Data: (3xnPoints) 2D points on image 1 (homogeneous
-            coordinates) [[x], [y], [w]]
-        x2Data: (3xnPoints) 2D points on image 2 (homogeneous
-            coordinates) [[x], [y], [w]]
-        K_c: (3x3) Intrinsic calibration matrix
-        nPoints: Number of points
-    -output:
-        res: residuals from the error between the 2D matched points
-            and the projected points from the 3D points
-            (2 equations/residuals per 2D point)
+      l: image line in homogenous coordinates
+      strFormat: line format
+      lWidth: line width
+    -output: None
     """
-    ######################### Get params #########################
-    theta = np.array([Op[2], Op[3], Op[4]])
-    R_c2_c1 = sc.linalg.expm(crossMatrix(theta))
-    t_c2_c1 = np.array([np.sin(Op[0]) * np.cos(Op[1]), np.sin(Op[0]) * np.sin(Op[1]), np.cos(Op[0])])
-    T_c2_c1 = np.vstack((np.hstack((R_c2_c1, t_c2_c1[:, np.newaxis])), [0, 0, 0, 1]))
-    
-    P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
-    P_c1 = K_c @ P_canonical;
-    P_c2 = K_c @ P_canonical @ T_c2_c1;
-    
-    ######################### Get 3D points in cam 1 and 2 #########################
-    p3D_1 = []
-    for i in range(0, nPoints * 4, 4):
-        x = Op[i + 5]
-        y = Op[i + 6]
-        z = Op[i + 7]
-        w = Op[i + 8]
-        p3D_1.append(np.array([x,y,x,w]))
-    p3D_1 = p3D_1.T;
-    
-    p3D_2 = []
-    for i in range(p3D_1.shape[1]):
-        p3D_2.append(T_c2_c1 @ p3D_1[:, i])
-    p3D_2 = np.array(p3D_2);
-    
-    ######################### Project 3d points to each camera #########################
-    p2D_1 = [];
-    p2D_2 = [];
-    for i in range(p3D_1.shape[1]):
-        p2D_1.append(P_c1 @ p3D_1[:, i])
-        p2D_2.append(P_c2 @ p3D_2[:, i])
-    p2D_1 = np.array(p2D_1);
-    p2D_2 = np.array(p2D_2);
-    
-    loss = [];
-    for i in range(nPoints):
-        e_1x = x1Data[0, i] - p2D_1[0, i];
-        e_1y = x1Data[1, i] - p2D_1[1, i];
-        e_2x = x2Data[0, i] - p2D_2[0, i];
-        e_2y = x2Data[1, i] - p2D_2[1, i];
-        loss.append(e_1x);
-        loss.append(e_1y);
-        loss.append(e_2x);
-        loss.append(e_2y);
-    #loss = np.array(loss);
-    return loss;
-
-    
-    
+    # p_l_y is the intersection of the line with the axis Y (x=0)
+    p_l_y = np.array([0, -l[2] / l[1]])
+    # p_l_x is the intersection point of the line with the axis X (y=0)
+    p_l_x = np.array([-l[2] / l[0], 0])
+    # Draw the line segment p_l_x to  p_l_y
+    plt.plot([p_l_y[0], p_l_x[0]], [p_l_y[1], p_l_x[1]], strFormat, linewidth=lWidth)
     
 
 def indexMatrixToMatchesList(matchesList):
@@ -199,15 +137,82 @@ def drawRefSystem(ax, T_w_c, strStyle, nameStr):
     draw3DLine(ax, T_w_c[0:3, 3:4], T_w_c[0:3, 3:4] + T_w_c[0:3, 2:3], strStyle, 'b', 1)
     ax.text(np.squeeze( T_w_c[0, 3]+0.1), np.squeeze( T_w_c[1, 3]+0.1), np.squeeze( T_w_c[2, 3]+0.1), nameStr)
     
-def getFundamentalMatrix(points1, points2):
-    x1Data = points1.T
-    x2Data = points2.T
+def on_click_epipolar(event):
+    if event.button == 1:  # Left mouse button
+        plt.figure(4)
+        plt.imshow(image_pers_2, cmap='gray', vmin=0, vmax=255)
+        plt.title('Image 2 - Epipolar Lines')
+        plt.draw()  # We update the figure display
+        print(f'You clicked at ({event.xdata}, {event.ydata})')
+        x_0 = np.array([event.xdata, event.ydata, 1])
+        l_xi_1 = np.dot(F_21, x_0);
+        u, s, vh = np.linalg.svd(F_21_ground_truth.T);
+        e_2 = vh[-1, :];
+        e_2 = e_2 / e_2[2]
+        plt.plot(e_2[0], e_2[1],'rx', markersize=10)
+        u, s, vh = np.linalg.svd(F_21.T);
+        e_2 = vh[-1, :];
+        e_2 = e_2 / e_2[2]
+        plt.plot(e_2[0], e_2[1],'bx', markersize=10)
+        drawLine(l_xi_1, 'g-', 1)
+                
+
+def drawEpipolarLine (figNum): # Draw epipolar line of a clicked point
+    fig = plt.figure(figNum)
+    plt.imshow(image_pers_1, cmap='gray', vmin=0, vmax=255)
+    plt.title('Image 1 - Click a point')
+    plt.draw()  # We update the figure display
+    fig.canvas.mpl_connect('button_press_event', on_click_epipolar)
+    print('Click in the image to continue...')
+    plt.waitforbuttonpress()
     
+    print('Click in the image to continue...')
+    plt.waitforbuttonpress()
+    return;
+
+def normalizationMatrix(nx,ny):
+    """
+ 
+    -input:
+        nx: number of columns of the matrix
+        ny: number of rows of the matrix
+    -output:
+        Nv: normalization matrix such that xN = Nv @ x
+    """
+    Nv = np.array([[1/nx, 0, -1/2], [0, 1/ny, -1/2], [0, 0, 1]])
+    return Nv
+
+def getFundamentalMatrix(points1, points2, N1, N2):
+    """
+ 
+    -input:
+        points1: np.array not normalized 2d points in camera 1, matches of points2 (2xn)
+        points2: np.array not normalized 2d points in camera 1, matches of points1 (2xn)
+        N1: normalization matrix for camera 1
+        N2: normalization matrix for camera 2
+    -output:
+        F_21: fundamental matrix F_21
+    """
+    x1Data = []
+    x2Data = []
+    for i in range(points1.shape[1]):
+        p1Norm = N1 @ np.array([points1[0][i], points1[1][i], 1]);
+        x1Data.append(p1Norm);
+        
+        p2Norm = N2 @ np.array([points2[0][i], points2[1][i], 1]);
+        x2Data.append(p2Norm);
+    
+    x1Data = np.array(x1Data).T
+    x2Data = np.array(x2Data).T
+    #x1Data = points1
+    #x2Data = points2
     A = []
 
     for i in range(x1Data.shape[1]):
         x0, y0, w0 = x1Data[:, i]
         x1, y1, w1 = x2Data[:, i]
+        #w0 = 1;
+        #w1 = 1;
         A.append([x0*x1, y0*x1, w0*x1, x0*y1, y0*y1, w0*y1, x0*w1, y0*w1, w0*w1])
         
     A = np.array(A)
@@ -218,8 +223,100 @@ def getFundamentalMatrix(points1, points2):
     S[2:]=0
     F_c2_c1_estimated = np.dot(U,np.dot(np.diag(S),V))
     rank = np.linalg.matrix_rank(F_c2_c1_estimated)
+
+    return N2.T @ F_c2_c1_estimated @ N1
+
+def crossMatrixInv(M):
+    x = [M[2, 1], M[0, 2], M[1, 0]]
+    return x
+
+def crossMatrix(x):
+    M = np.array([[0, -x[2], x[1]],
+        [x[2], 0, -x[0]],
+        [-x[1], x[0], 0]], dtype="object")
+    return M
+
+#theta = crossMatrixInv(sc.linalg.logm(R))
+
+def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
+    """
+    -input:
+        Op: Optimization parameters: this must include a
+            paramtrization for T_21 (reference 1 seen from reference 2) Op = [theta_transl(incl), phi (athimuth), theta1, theta2, theta3, x, y, z, w]
+            in a proper way and for X1 (3D points in ref 1, our 3d points)             
+        x1Data: (3xnPoints) 2D points on image 1 (homogeneous
+            coordinates) [[x], [y], [w]]
+        x2Data: (3xnPoints) 2D points on image 2 (homogeneous
+            coordinates) [[x], [y], [w]]
+        K_c: (3x3) Intrinsic calibration matrix
+        nPoints: Number of points
+    -output:
+        res: residuals from the error between the 2D matched points
+            and the projected points from the 3D points
+            (2 equations/residuals per 2D point)
+    """
+    ######################### Get params #########################
+    theta = np.array([Op[2], Op[3], Op[4]])
+    R_c2_c1 = sc.linalg.expm(crossMatrix(theta))
+    t_c2_c1 = np.array([np.sin(Op[0]) * np.cos(Op[1]), np.sin(Op[0]) * np.sin(Op[1]), np.cos(Op[0])])
+    T_c2_c1 = np.vstack((np.hstack((R_c2_c1, t_c2_c1[:, np.newaxis])), [0, 0, 0, 1]))
     
-    return F_c2_c1_estimated
+    P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
+    P_c1 = K_c @ P_canonical;
+    P_c2 = K_c @ P_canonical @ T_c2_c1;
+    
+    ######################### Get 3D points in cam 1 and 2 #########################
+    p3D_1 = []
+    for i in range(0, nPoints * 4, 4):
+        x = Op[i + 5]
+        y = Op[i + 6]
+        z = Op[i + 7]
+        w = Op[i + 8]
+        p3D_1.append(np.array([x,y,x,w]))
+    p3D_1 = p3D_1.T;
+    
+    p3D_2 = []
+    for i in range(p3D_1.shape[1]):
+        p3D_2.append(T_c2_c1 @ p3D_1[:, i])
+    p3D_2 = np.array(p3D_2);
+    
+    ######################### Project 3d points to each camera #########################
+    p2D_1 = [];
+    p2D_2 = [];
+    for i in range(p3D_1.shape[1]):
+        p2D_1.append(P_c1 @ p3D_1[:, i])
+        p2D_2.append(P_c2 @ p3D_2[:, i])
+    p2D_1 = np.array(p2D_1);
+    p2D_2 = np.array(p2D_2);
+    
+    loss = [];
+    for i in range(nPoints):
+        e_1x = x1Data[0, i] - p2D_1[0, i];
+        e_1y = x1Data[1, i] - p2D_1[1, i];
+        e_2x = x2Data[0, i] - p2D_2[0, i];
+        e_2y = x2Data[1, i] - p2D_2[1, i];
+        loss.append(e_1x);
+        loss.append(e_1y);
+        loss.append(e_2x);
+        loss.append(e_2y);
+    #loss = np.array(loss);
+    return loss;
+
+def distanceLinePoint(line, point):
+    return abs(line[0] * point[0] + line[1] * point[1] + line[2]) / math.sqrt(line[0] ** 2 + line[1] ** 2)
+
+def euclideanDistance2D(p1, p2):
+    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+def euclideanDistance3d(point1, point2):
+    
+    dehomogenized_point1 = point1 / point1[3]
+    dehomogenized_point2 = point2 / point2[3]
+
+    distance = np.linalg.norm(dehomogenized_point1 - dehomogenized_point2)
+
+    return distance
+
 
 if __name__ == '__main__':
     np.set_printoptions(precision=4,linewidth=1024,suppress=True)
@@ -229,7 +326,7 @@ if __name__ == '__main__':
     T_wc1 = np.loadtxt('T_w_c1.txt')
     T_wc2 = np.loadtxt('T_w_c2.txt')                                    
     T_wc3 = np.loadtxt('T_w_c3.txt')
-    F_21 = np.loadtxt('F_21.txt')
+    F_21_ground_truth = np.loadtxt('F_21.txt')
     K_c = np.loadtxt('K_c.txt')
     X_w = np.loadtxt('X_w.txt')
 
@@ -270,6 +367,9 @@ if __name__ == '__main__':
     image_pers_1 = cv2.imread(path_image_1)
     image_pers_2 = cv2.imread(path_image_2)
     image_pers_3 = cv2.imread(path_image_3)
+    
+    N1 = normalizationMatrix(image_pers_1.shape[1], image_pers_1.shape[0])
+    N2 = normalizationMatrix(image_pers_2.shape[1], image_pers_2.shape[0])
 
 
     # Construct the matches
@@ -346,25 +446,19 @@ if __name__ == '__main__':
     plt.show()
     
     # ----------------------------- USING OUR F -----------------------------
-    """T_w_c1 = np.loadtxt('T_w_c1.txt')
-    T_w_c2 = np.loadtxt('T_w_c2.txt')
-    
-    T_c1_w = np.linalg.inv(T_w_c1);
-    T_c2_w = np.linalg.inv(T_w_c2);
-    
-    K_c = np.loadtxt('K_c.txt')
-    X_w = np.loadtxt('X_w.txt')
-    
+    F_21 = getFundamentalMatrix(x1Data, x2Data, N1, N2);
+    drawEpipolarLine(21);
+    T_c1_w = np.linalg.inv(T_wc1);
+    T_c2_w = np.linalg.inv(T_wc2);
     # Canonical perspective projection matrix
     P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
     
+    # Projection matrixes
     P_c1 = K_c @ P_canonical @ T_c1_w;
     P_c2 = K_c @ P_canonical @ T_c2_w;
     
-    # Exercise 2.3: Compute F by estimation with 8 correspondences
-    F_c2_c1_estimated = getFundamentalMatrix();
     
-    E_c2_c1_estimated = (K_c.T) @ F_c2_c1_estimated @ K_c
+    E_c2_c1_estimated = (K_c.T) @ F_21 @ K_c
     
     U, _, V = np.linalg.svd(E_c2_c1_estimated)
     
@@ -375,7 +469,7 @@ if __name__ == '__main__':
     np.linalg.det(R1);
     if np.linalg.det(R1) == -1:
         R1 *= -1
-    R2 = U @ W.T @ V # calculo determinante y si sale -1 la multiplico por -1yyy
+    R2 = U @ W.T @ V # calculo determinante y si sale -1 la multiplico por -1
     np.linalg.det(R2);
     if np.linalg.det(R2) == -1:
         R2 *= -1
@@ -410,12 +504,33 @@ if __name__ == '__main__':
     
     # I transform 
     X_c2_estimated0 = T_c2_c1_estimated0 @ X_c1
-    d0 = euclideanDistance3d(X_c2_estimated0, X_c2)
+    d0 = euclideanDistance3d(X_c2_estimated0, X_c2) # this is the one, less euclidean distance
     X_c2_estimated1 = T_c2_c1_estimated1 @ X_c1
     d1 = euclideanDistance3d(X_c2_estimated1, X_c2)
-    X_c2_estimated2 = T_c2_c1_estimated2 @ X_c1 # this is the one, less euclidean distance
+    X_c2_estimated2 = T_c2_c1_estimated2 @ X_c1 
     d2 = euclideanDistance3d(X_c2_estimated2, X_c2) 
     X_c2_estimated3 = T_c2_c1_estimated3 @ X_c1
-    d3 = euclideanDistance3d(X_c2_estimated3, X_c2)"""
+    d3 = euclideanDistance3d(X_c2_estimated3, X_c2)
     
-    
+    fig3D = plt.figure(6)
+
+    ax = plt.axes(projection='3d', adjustable='box')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    T_c2_c1 = T_c2_w @ T_wc1;
+    drawRefSystem(ax, T_c2_c1_estimated2, '-', 'C2_estimated')
+    drawRefSystem(ax, T_c2_c1, '-', 'C2')
+
+
+    ax.scatter([X_c2[0], X_c2_estimated0[0]], [X_c2[1], X_c2_estimated0[1]], [X_c2[2], X_c2_estimated0[2]], marker='.')
+
+    #Matplotlib does not correctly manage the axis('equal')
+    xFakeBoundingBox = np.linspace(0, 4, 2)
+    yFakeBoundingBox = np.linspace(0, 4, 2)
+    zFakeBoundingBox = np.linspace(0, 4, 2)
+    plt.plot(xFakeBoundingBox, yFakeBoundingBox, zFakeBoundingBox, 'w.')
+    print('Close the figure to continue. Left button for orbit, right button for zoom.')
+    plt.show()
+    a = 0
