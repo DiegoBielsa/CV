@@ -342,7 +342,7 @@ if __name__ == '__main__':
     zFakeBoundingBox = np.linspace(0, 4, 2)
     plt.plot(xFakeBoundingBox, yFakeBoundingBox, zFakeBoundingBox, 'w.')
     print('Close the figure to continue. Left button for orbit, right button for zoom.')
-    #plt.show()
+    plt.show()
 
 
     #Read the images
@@ -381,16 +381,16 @@ if __name__ == '__main__':
                                    None,
                                    flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS and cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-    plt.figure(2)
+    """plt.figure(2)
     plt.imshow(imgMatched12)
     plt.title("{} matches between views 1 and 2".format(len(dMatchesList12)))
-    #plt.draw()
+    plt.draw()
 
     plt.figure(3)
     plt.imshow(imgMatched13)
     plt.title("{} matches between views 1 and 3".format(len(dMatchesList13)))
     print('Close the figures to continue.')
-    #plt.show()
+    plt.show()"""
 
     # Project the points
     x1_p = K_c @ np.eye(3, 4) @ np.linalg.inv(T_wc1) @ X_w
@@ -402,14 +402,14 @@ if __name__ == '__main__':
 
 
     # Plot the 2D points
-    plt.figure(4)
+    """plt.figure(4)
     plt.imshow(image_pers_1, cmap='gray', vmin=0, vmax=255)
     plotResidual(x1Data, x1_p, 'k-')
     plt.plot(x1_p[0, :], x1_p[1, :], 'bo')
     plt.plot(x1Data[0, :], x1Data[1, :], 'rx')
     plotNumberedImagePoints(x1Data[0:2, :], 'r', 4)
     plt.title('Image 1')
-    #plt.draw()
+    plt.draw()
 
     plt.figure(5)
     plt.imshow(image_pers_2, cmap='gray', vmin=0, vmax=255)
@@ -418,7 +418,7 @@ if __name__ == '__main__':
     plt.plot(x2Data[0, :], x2Data[1, :], 'rx')
     plotNumberedImagePoints(x2Data[0:2, :], 'r', 4)
     plt.title('Image 2')
-    #plt.draw()
+    plt.draw()
 
     plt.figure(6)
     plt.imshow(image_pers_3, cmap='gray', vmin=0, vmax=255)
@@ -428,7 +428,7 @@ if __name__ == '__main__':
     plotNumberedImagePoints(x3Data[0:2, :], 'r', 4)
     plt.title('Image 3')
     print('Close the figures to continue.')
-    #plt.show()
+    plt.show()"""
     
     # ----------------------------- USING OUR F -----------------------------
     p1_norm = [];
@@ -486,14 +486,35 @@ if __name__ == '__main__':
     T_c2_c1_estimated3 = np.vstack((np.hstack((R2, t2[:, np.newaxis])), [0, 0, 0, 1]))
     
     # Triangulation of one point (The first one for example)
-    
-    x0, y0 = x1Data[:, 0]
-    x1, y1 = x2Data[:, 0]
-    A = np.zeros((4, 4))
-    A[0] = x0 * P_c1[2] - P_c1[0]
-    A[1] = y0 * P_c1[2] - P_c1[1]
-    A[2] = x1 * P_c2[2] - P_c2[0]
-    A[3] = y1 * P_c2[2] - P_c2[1]
+    A = np.ones([4,4]);
+    X_own_w = np.ones([x1Data.shape[1], 4]);
+    for i in range(x1Data.shape[1]):
+        A[0][0] = P_c1[2][0] * x1Data[0][i] - P_c1[0][0];
+        A[0][1] = P_c1[2][1] * x1Data[0][i] - P_c1[0][1];
+        A[0][2] = P_c1[2][2] * x1Data[0][i] - P_c1[0][2];
+        A[0][3] = P_c1[2][3] * x1Data[0][i] - P_c1[0][3];
+        
+        A[1][0] = P_c1[2][0] * x1Data[1][i] - P_c1[1][0];
+        A[1][1] = P_c1[2][1] * x1Data[1][i] - P_c1[1][1];
+        A[1][2] = P_c1[2][2] * x1Data[1][i] - P_c1[1][2];
+        A[1][3] = P_c1[2][3] * x1Data[1][i] - P_c1[1][3];
+        
+        A[2][0] = P_c2[2][0] * x2Data[0][i] - P_c2[0][0];
+        A[2][1] = P_c2[2][1] * x2Data[0][i] - P_c2[0][1];
+        A[2][2] = P_c2[2][2] * x2Data[0][i] - P_c2[0][2];
+        A[2][3] = P_c2[2][3] * x2Data[0][i] - P_c2[0][3];
+        
+        A[3][0] = P_c2[2][0] * x2Data[1][i] - P_c2[1][0];
+        A[3][1] = P_c2[2][1] * x2Data[1][i] - P_c2[1][1];
+        A[3][2] = P_c2[2][2] * x2Data[1][i] - P_c2[1][2];
+        A[3][3] = P_c2[2][3] * x2Data[1][i] - P_c2[1][3];
+        
+        u, s, vh = np.linalg.svd(A);
+        point = vh[-1, :];
+        point_n = point / point[3];
+        X_own_w[i, :] = point_n;
+
+    X_own_w = X_own_w.T;
     
     _, _, V = np.linalg.svd(A)
     X_homogeneous = V[-1, :]
@@ -514,6 +535,18 @@ if __name__ == '__main__':
     X_c2_estimated3 = T_c2_c1_estimated3 @ X_c1
     d3 = euclideanDistance3d(X_c2_estimated3, X_c2)
     
+    X_w_estimated = []
+    T_wc2_estimated = T_wc1 @ np.linalg.inv(T_c2_c1_estimated2);
+    for i in range(X_own_w.shape[1]):
+        x_c1 = T_c1_w @ X_own_w[:, i];
+        x_c2 = T_c2_w @ X_own_w[:, i];
+        x_c2_estimated = T_c2_c1_estimated2 @ x_c1; 
+        d = euclideanDistance3d(x_c2_estimated, x_c2)
+        x_w_estimated = T_wc2 @ x_c2_estimated;
+        d1 = euclideanDistance3d(x_w_estimated, X_own_w[:, i])
+        X_w_estimated.append(x_w_estimated);
+    X_w_estimated = np.array(X_w_estimated).T;
+    
     fig3D = plt.figure(6)
 
     ax = plt.axes(projection='3d', adjustable='box')
@@ -521,12 +554,13 @@ if __name__ == '__main__':
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
 
-    T_c2_c1 = T_c2_w @ T_wc1;
-    drawRefSystem(ax, T_c2_c1_estimated2, '-', 'C2_estimated')
-    drawRefSystem(ax, T_c2_c1, '-', 'C2')
+    
+    drawRefSystem(ax, np.eye(4, 4), '-', 'W')
+    drawRefSystem(ax, T_wc2_estimated, '-', 'C2_estimated')
+    drawRefSystem(ax, T_wc2, '-', 'C2')
 
-
-    ax.scatter([X_c2[0], X_c2_estimated0[0]], [X_c2[1], X_c2_estimated0[1]], [X_c2[2], X_c2_estimated0[2]], marker='.')
+    ax.scatter(X_own_w[0, :], X_own_w[1, :], X_own_w[2, :], marker='.', c="green")
+    ax.scatter(X_w_estimated[0, :], X_w_estimated[1, :], X_w_estimated[2, :], marker='.', c="red")
 
     #Matplotlib does not correctly manage the axis('equal')
     xFakeBoundingBox = np.linspace(0, 4, 2)
