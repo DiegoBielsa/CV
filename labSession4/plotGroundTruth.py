@@ -182,37 +182,22 @@ def normalizationMatrix(nx,ny):
     Nv = np.array([[1/nx, 0, -1/2], [0, 1/ny, -1/2], [0, 0, 1]])
     return Nv
 
-def getFundamentalMatrix(points1, points2, N1, N2):
+def getFundamentalMatrix(points1, points2):
     """
- 
     -input:
-        points1: np.array not normalized 2d points in camera 1, matches of points2 (2xn)
-        points2: np.array not normalized 2d points in camera 1, matches of points1 (2xn)
-        N1: normalization matrix for camera 1
-        N2: normalization matrix for camera 2
+        points1: np.array normalized in homogeneous 2d points in camera 1, matches of points2 (nx2)
+        points2: np.array normalized 2d points in camera 1, matches of points1 (nx2)
     -output:
         F_21: fundamental matrix F_21
     """
-    x1Data = []
-    x2Data = []
-    for i in range(points1.shape[1]):
-        p1Norm = N1 @ np.array([points1[0][i], points1[1][i], 1]);
-        x1Data.append(p1Norm);
-        
-        p2Norm = N2 @ np.array([points2[0][i], points2[1][i], 1]);
-        x2Data.append(p2Norm);
+    x1Data = points1.T
+    x2Data = points2.T
     
-    x1Data = np.array(x1Data).T
-    x2Data = np.array(x2Data).T
-    #x1Data = points1
-    #x2Data = points2
     A = []
 
     for i in range(x1Data.shape[1]):
         x0, y0, w0 = x1Data[:, i]
         x1, y1, w1 = x2Data[:, i]
-        #w0 = 1;
-        #w1 = 1;
         A.append([x0*x1, y0*x1, w0*x1, x0*y1, y0*y1, w0*y1, x0*w1, y0*w1, w0*w1])
         
     A = np.array(A)
@@ -223,8 +208,8 @@ def getFundamentalMatrix(points1, points2, N1, N2):
     S[2:]=0
     F_c2_c1_estimated = np.dot(U,np.dot(np.diag(S),V))
     rank = np.linalg.matrix_rank(F_c2_c1_estimated)
-
-    return N2.T @ F_c2_c1_estimated @ N1
+    
+    return F_c2_c1_estimated / F_c2_c1_estimated[2][2]
 
 def crossMatrixInv(M):
     x = [M[2, 1], M[0, 2], M[1, 0]]
@@ -357,7 +342,7 @@ if __name__ == '__main__':
     zFakeBoundingBox = np.linspace(0, 4, 2)
     plt.plot(xFakeBoundingBox, yFakeBoundingBox, zFakeBoundingBox, 'w.')
     print('Close the figure to continue. Left button for orbit, right button for zoom.')
-    plt.show()
+    #plt.show()
 
 
     #Read the images
@@ -399,13 +384,13 @@ if __name__ == '__main__':
     plt.figure(2)
     plt.imshow(imgMatched12)
     plt.title("{} matches between views 1 and 2".format(len(dMatchesList12)))
-    plt.draw()
+    #plt.draw()
 
     plt.figure(3)
     plt.imshow(imgMatched13)
     plt.title("{} matches between views 1 and 3".format(len(dMatchesList13)))
     print('Close the figures to continue.')
-    plt.show()
+    #plt.show()
 
     # Project the points
     x1_p = K_c @ np.eye(3, 4) @ np.linalg.inv(T_wc1) @ X_w
@@ -424,7 +409,7 @@ if __name__ == '__main__':
     plt.plot(x1Data[0, :], x1Data[1, :], 'rx')
     plotNumberedImagePoints(x1Data[0:2, :], 'r', 4)
     plt.title('Image 1')
-    plt.draw()
+    #plt.draw()
 
     plt.figure(5)
     plt.imshow(image_pers_2, cmap='gray', vmin=0, vmax=255)
@@ -433,7 +418,7 @@ if __name__ == '__main__':
     plt.plot(x2Data[0, :], x2Data[1, :], 'rx')
     plotNumberedImagePoints(x2Data[0:2, :], 'r', 4)
     plt.title('Image 2')
-    plt.draw()
+    #plt.draw()
 
     plt.figure(6)
     plt.imshow(image_pers_3, cmap='gray', vmin=0, vmax=255)
@@ -443,10 +428,27 @@ if __name__ == '__main__':
     plotNumberedImagePoints(x3Data[0:2, :], 'r', 4)
     plt.title('Image 3')
     print('Close the figures to continue.')
-    plt.show()
+    #plt.show()
     
     # ----------------------------- USING OUR F -----------------------------
-    F_21 = getFundamentalMatrix(x1Data, x2Data, N1, N2);
+    p1_norm = [];
+    x1Data_T = np.vstack((x1Data, np.ones((1, x1Data.shape[1])))).T
+    for i in range(x1Data_T.shape[0]):
+        x1Norm = N1 @ np.array([x1Data_T[i][0], x1Data_T[i][1], x1Data_T[i][2]]).T;
+        p1_norm.append(x1Norm);
+    p1_norm = np.array(p1_norm);
+    
+    p2_norm = [];
+    x2Data_T = np.vstack((x2Data, np.ones((1, x2Data.shape[1])))).T
+    for i in range(x2Data_T.shape[0]):
+        x2Norm = N2 @ np.array([x2Data_T[i][0], x2Data_T[i][1], x1Data_T[i][2]]).T;
+        p2_norm.append(x2Norm);
+    p2_norm = np.array(p2_norm);
+    
+    F_21 = getFundamentalMatrix(x1Data_T, x2Data_T);
+    #For unnormalizing the resulting F matrix, before evaluating the matches:
+    print(F_21)
+    print(F_21_ground_truth)
     drawEpipolarLine(21);
     T_c1_w = np.linalg.inv(T_wc1);
     T_c2_w = np.linalg.inv(T_wc2);
@@ -467,11 +469,11 @@ if __name__ == '__main__':
     
     R1 = U @ W @ V # calcular determinante
     np.linalg.det(R1);
-    if np.linalg.det(R1) == -1:
+    if np.round(np.linalg.det(R1)) == -1:
         R1 *= -1
     R2 = U @ W.T @ V # calculo determinante y si sale -1 la multiplico por -1
     np.linalg.det(R2);
-    if np.linalg.det(R2) == -1:
+    if np.round(np.linalg.det(R2)) == -1:
         R2 *= -1
     
     
@@ -504,11 +506,11 @@ if __name__ == '__main__':
     
     # I transform 
     X_c2_estimated0 = T_c2_c1_estimated0 @ X_c1
-    d0 = euclideanDistance3d(X_c2_estimated0, X_c2) # this is the one, less euclidean distance
+    d0 = euclideanDistance3d(X_c2_estimated0, X_c2) 
     X_c2_estimated1 = T_c2_c1_estimated1 @ X_c1
     d1 = euclideanDistance3d(X_c2_estimated1, X_c2)
     X_c2_estimated2 = T_c2_c1_estimated2 @ X_c1 
-    d2 = euclideanDistance3d(X_c2_estimated2, X_c2) 
+    d2 = euclideanDistance3d(X_c2_estimated2, X_c2) # this is the one, less euclidean distance
     X_c2_estimated3 = T_c2_c1_estimated3 @ X_c1
     d3 = euclideanDistance3d(X_c2_estimated3, X_c2)
     
