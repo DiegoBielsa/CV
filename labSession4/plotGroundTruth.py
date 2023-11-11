@@ -536,16 +536,19 @@ if __name__ == '__main__':
     d3 = euclideanDistance3d(X_c2_estimated3, X_c2)
     
     X_w_estimated = []
+    X_c1_estimated = []
     T_wc2_estimated = T_wc1 @ np.linalg.inv(T_c2_c1_estimated2);
     for i in range(X_own_w.shape[1]):
         x_c1 = T_c1_w @ X_own_w[:, i];
         x_c2 = T_c2_w @ X_own_w[:, i];
         x_c2_estimated = T_c2_c1_estimated2 @ x_c1; 
-        d = euclideanDistance3d(x_c2_estimated, x_c2)
         x_w_estimated = T_wc2 @ x_c2_estimated;
-        d1 = euclideanDistance3d(x_w_estimated, X_own_w[:, i])
+        x_c1_estimated = T_c1_w @ x_w_estimated;
+        a = T_c2_c1_estimated2 @ x_c1;
+        X_c1_estimated.append(x_c1_estimated);
         X_w_estimated.append(x_w_estimated);
     X_w_estimated = np.array(X_w_estimated).T;
+    X_c1_estimated = np.array(X_c1_estimated).T;
     
     fig3D = plt.figure(6)
 
@@ -557,7 +560,9 @@ if __name__ == '__main__':
     
     drawRefSystem(ax, np.eye(4, 4), '-', 'W')
     drawRefSystem(ax, T_wc2_estimated, '-', 'C2_estimated')
+    drawRefSystem(ax, T_wc1, '-', 'C1')
     drawRefSystem(ax, T_wc2, '-', 'C2')
+    drawRefSystem(ax, T_wc3, '-', 'C3')
 
     ax.scatter(X_own_w[0, :], X_own_w[1, :], X_own_w[2, :], marker='.', c="green")
     ax.scatter(X_w_estimated[0, :], X_w_estimated[1, :], X_w_estimated[2, :], marker='.', c="red")
