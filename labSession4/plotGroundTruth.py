@@ -227,12 +227,12 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     """
     -input:
         Op: Optimization parameters: this must include a
-            paramtrization for T_21 (reference 1 seen from reference 2) Op = [theta_transl(incl), phi (athimuth), theta1, theta2, theta3, x, y, z, w]
+            paramtrization for T_21 (reference 1 seen from reference 2) Op = [t_x, t_y, t_z, theta1, theta2, theta3, x, y, z, w]
             in a proper way and for X1 (3D points in ref 1, our 3d points)             
         x1Data: (3xnPoints) 2D points on image 1 (homogeneous
-            coordinates) [[x], [y], [w]]
+            coordinates) [[x], [y], [w]] (3xn)
         x2Data: (3xnPoints) 2D points on image 2 (homogeneous
-            coordinates) [[x], [y], [w]]
+            coordinates) [[x], [y], [w]] (3xn)
         K_c: (3x3) Intrinsic calibration matrix
         nPoints: Number of points
     -output:
@@ -241,50 +241,54 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
             (2 equations/residuals per 2D point)
     """
     ######################### Get params #########################
-    theta = np.array([Op[2], Op[3], Op[4]])
+    theta = np.array([Op[3], Op[4], Op[5]])
     R_c2_c1 = sc.linalg.expm(crossMatrix(theta))
-    t_c2_c1 = np.array([np.sin(Op[0]) * np.cos(Op[1]), np.sin(Op[0]) * np.sin(Op[1]), np.cos(Op[0])])
+    t_c2_c1 = np.array([Op[0], Op[1], Op[2]])
     T_c2_c1 = np.vstack((np.hstack((R_c2_c1, t_c2_c1[:, np.newaxis])), [0, 0, 0, 1]))
     
     P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
     P_c1 = K_c @ P_canonical;
-    P_c2 = K_c @ P_canonical @ T_c2_c1;
+    P_c2 = K_c @ P_canonical;
     
     ######################### Get 3D points in cam 1 and 2 #########################
     p3D_1 = []
     for i in range(0, nPoints * 4, 4):
-        x = Op[i + 5]
-        y = Op[i + 6]
-        z = Op[i + 7]
-        w = Op[i + 8]
-        p3D_1.append(np.array([x,y,x,w]))
+        x = Op[i + 6]
+        y = Op[i + 7]
+        z = Op[i + 8]
+        w = Op[i + 9]
+        p3D_1.append(np.array([x, y, z, w]))
+    p3D_1 = np.array(p3D_1);
     p3D_1 = p3D_1.T;
     
-    p3D_2 = []
-    for i in range(p3D_1.shape[1]):
-        p3D_2.append(T_c2_c1 @ p3D_1[:, i])
-    p3D_2 = np.array(p3D_2);
+    p3D_2 = T_c2_c1 @ p3D_1
     
     ######################### Project 3d points to each camera #########################
     p2D_1 = [];
     p2D_2 = [];
     for i in range(p3D_1.shape[1]):
-        p2D_1.append(P_c1 @ p3D_1[:, i])
-        p2D_2.append(P_c2 @ p3D_2[:, i])
-    p2D_1 = np.array(p2D_1);
-    p2D_2 = np.array(p2D_2);
+        p2d_1 = P_c1 @ p3D_1[:, i];
+        p2d_1 = p2d_1 / p2d_1[2];
+        p2D_1.append(p2d_1);
+        
+        p2d_2 = P_c2 @ p3D_2[:, i];
+        p2d_2 = p2d_2 / p2d_2[2];
+        p2D_2.append(p2d_2);
+    p2D_1 = np.array(p2D_1).T;
+    p2D_2 = np.array(p2D_2).T;
     
     loss = [];
     for i in range(nPoints):
-        e_1x = x1Data[0, i] - p2D_1[0, i];
-        e_1y = x1Data[1, i] - p2D_1[1, i];
-        e_2x = x2Data[0, i] - p2D_2[0, i];
-        e_2y = x2Data[1, i] - p2D_2[1, i];
+        e_1x = (x1Data[0, i] - p2D_1[0, i]) ** 2;
+        e_1y = (x1Data[1, i] - p2D_1[1, i]) ** 2;
+        e_2x = (x2Data[0, i] - p2D_2[0, i]) ** 2;
+        e_2y = (x2Data[1, i] - p2D_2[1, i]) ** 2;
         loss.append(e_1x);
         loss.append(e_1y);
         loss.append(e_2x);
         loss.append(e_2y);
-    #loss = np.array(loss);
+        
+    loss = np.array(loss);
     return loss;
 
 def distanceLinePoint(line, point):
@@ -430,7 +434,7 @@ if __name__ == '__main__':
     print('Close the figures to continue.')
     plt.show()"""
     
-    # ----------------------------- USING OUR F -----------------------------
+    # ----------------------------- USING OUR F ----------------------------- #
     p1_norm = [];
     x1Data_T = np.vstack((x1Data, np.ones((1, x1Data.shape[1])))).T
     for i in range(x1Data_T.shape[0]):
@@ -449,7 +453,7 @@ if __name__ == '__main__':
     #For unnormalizing the resulting F matrix, before evaluating the matches:
     print(F_21)
     print(F_21_ground_truth)
-    drawEpipolarLine(21);
+    #drawEpipolarLine(21);
     T_c1_w = np.linalg.inv(T_wc1);
     T_c2_w = np.linalg.inv(T_wc2);
     # Canonical perspective projection matrix
@@ -459,6 +463,7 @@ if __name__ == '__main__':
     P_c1 = K_c @ P_canonical @ T_c1_w;
     P_c2 = K_c @ P_canonical @ T_c2_w;
     
+    # ----------------------------- GETTING T_c2_c1_estimated2 ----------------------------- #
     
     E_c2_c1_estimated = (K_c.T) @ F_21 @ K_c
     
@@ -535,6 +540,12 @@ if __name__ == '__main__':
     X_c2_estimated3 = T_c2_c1_estimated3 @ X_c1
     d3 = euclideanDistance3d(X_c2_estimated3, X_c2)
     
+    XC1 = T_c1_w @ X_own_w
+    XC2 = T_c2_w @ X_own_w
+    XC2ESTIMATED = T_c2_c1_estimated2 @ T_c1_w @ X_own_w
+    XWESTIMATED = T_wc2 @ XC2ESTIMATED
+    XC1ESTIMATED = T_c1_w @ XWESTIMATED
+    
     X_w_estimated = []
     X_c1_estimated = []
     T_wc2_estimated = T_wc1 @ np.linalg.inv(T_c2_c1_estimated2);
@@ -574,4 +585,45 @@ if __name__ == '__main__':
     plt.plot(xFakeBoundingBox, yFakeBoundingBox, zFakeBoundingBox, 'w.')
     print('Close the figure to continue. Left button for orbit, right button for zoom.')
     plt.show()
-    a = 0
+    
+    # ----------------------------- TEST BUNDLE ADJUSTMENT ----------------------------- #
+    # Test with the initial solution
+    T_c2_c1 = T_c2_w @ T_wc1;
+    
+    R_c2_c1 = T_c2_c1[:3, :3];
+    Transl_c2_c1 = T_c2_c1[:3, 3];
+    
+    XC1 = T_c1_w @ X_w
+    XC2 = T_c2_c1 @ XC1
+    
+    theta_rotation_test = crossMatrixInv(sc.linalg.logm(R_c2_c1));
+    Op_test = [Transl_c2_c1[0], Transl_c2_c1[1], Transl_c2_c1[2], theta_rotation_test[0], theta_rotation_test[1], theta_rotation_test[2]];
+    Op_test = np.array(Op_test);
+    Op_test = np.hstack((Op_test, XC1.T.flatten()));
+    
+    res = resBundleProjection(Op_test, x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]);
+    
+    x1_p_test = K_c @ np.eye(3, 4) @ XC1
+    x1_p_test /= x1_p_test[2, :]
+    
+    """plt.figure(8)
+    plt.imshow(image_pers_1, cmap='gray', vmin=0, vmax=255)
+    plotResidual(x1Data, x1_p_test, 'k-')
+    plt.plot(x1_p_test[0, :], x1_p_test[1, :], 'bo')
+    plt.plot(x1Data[0, :], x1Data[1, :], 'rx')
+    plotNumberedImagePoints(x1Data[0:2, :], 'r', 4)
+    plt.title('Image 1')
+    plt.draw()
+    plt.show()"""
+    
+    # ----------------------------- BUNDLE ADJUSTMENT ----------------------------- #
+    # Set parameters for bundle adjustment
+    theta_rotation = crossMatrixInv(sc.linalg.logm(R2));
+    Op = [t1[0], t1[1], t1[2], theta_rotation[0], theta_rotation[1], theta_rotation[2]];
+    Op = np.array(Op);
+    Op = np.hstack((Op, X_c1_estimated.T.flatten()));
+    
+    # Perform bundle adjustment using least squares
+    OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='lm')
+    
+    a = 0;
