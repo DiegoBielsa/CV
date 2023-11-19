@@ -278,13 +278,13 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     
     loss = [];
     for i in range(nPoints):
-        e_1x = (x1Data[0, i] - p2D_1[0, i]);
-        e_1y = (x1Data[1, i] - p2D_1[1, i]);
-        e_2x = (x2Data[0, i] - p2D_2[0, i]);
-        e_2y = (x2Data[1, i] - p2D_2[1, i]);
+        e_1x = (p2D_1[0, i] - x1Data[0, i]);
+        e_1y = (p2D_1[1, i] - x1Data[1, i]);
+        e_2x = (p2D_2[0, i] - x2Data[0, i]);
+        e_2y = (p2D_2[1, i] - x2Data[1, i]);
         loss.append(e_1x);
-        loss.append(e_1y);
         loss.append(e_2x);
+        loss.append(e_1y);
         loss.append(e_2y);
         
     loss = np.array(loss);
@@ -450,8 +450,6 @@ if __name__ == '__main__':
     
     F_21 = getFundamentalMatrix(x1Data_T, x2Data_T);
     #For unnormalizing the resulting F matrix, before evaluating the matches:
-    print(F_21)
-    print(F_21_ground_truth)
     #drawEpipolarLine(21);
     T_c1_w = np.linalg.inv(T_wc1);
     T_c2_w = np.linalg.inv(T_wc2);
@@ -544,6 +542,7 @@ if __name__ == '__main__':
     XC2ESTIMATED = T_c2_c1_estimated2 @ T_c1_w @ X_own_w
     XWESTIMATED = T_wc2 @ XC2ESTIMATED
     XC1ESTIMATED = T_c1_w @ XWESTIMATED
+    XC2ESTIMATED_A = T_c2_c1_estimated2 @ XC1ESTIMATED
     
     X_w_estimated = []
     X_c1_estimated = []
@@ -626,11 +625,51 @@ if __name__ == '__main__':
     OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='lm')
     
     # Get the params optimized
-    R_Op = ;
-    T_Op = ;
-    X_c1_Op = ;
+    theta_optimized = np.array([OpOptim.x[3], OpOptim.x[4], OpOptim.x[5]])
+    R_c2_c1_optimized = sc.linalg.expm(crossMatrix(theta_optimized))
+    t_c2_c1_optimized = np.array([OpOptim.x[0], OpOptim.x[1], OpOptim.x[2]])
+    T_c2_c1_optimized = np.vstack((np.hstack((R_c2_c1_optimized, t_c2_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
+    
+    print(T_c2_c1)
+    print(T_c2_c1_estimated2)
+    print(T_c2_c1_optimized)
+    
+        
+    p3D_1 = []
+    for i in range(0, x1Data.shape[1] * 3, 3):
+        x = OpOptim.x[i + 6]
+        y = OpOptim.x[i + 7]
+        z = OpOptim.x[i + 8]
+        p3D_1.append(np.array([x, y, z, 1]))
+    p3D_1 = np.array(p3D_1);
+    p3D_1 = p3D_1.T;
+
     
     # Print the 3d points optimized
+    T_wc2_estimated = T_wc1 @ np.linalg.inv(T_c2_c1_optimized);
+    X_w_optimized = T_wc1 @ p3D_1
+    ax = plt.axes(projection='3d', adjustable='box')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    
+    drawRefSystem(ax, np.eye(4, 4), '-', 'W')
+    drawRefSystem(ax, T_wc2_estimated, '-', 'C2_estimated')
+    drawRefSystem(ax, T_wc1, '-', 'C1')
+    drawRefSystem(ax, T_wc2, '-', 'C2')
+    drawRefSystem(ax, T_wc3, '-', 'C3')
+
+    ax.scatter(X_own_w[0, :], X_own_w[1, :], X_own_w[2, :], marker='.', c="green")
+    ax.scatter(X_w_optimized[0, :], X_w_optimized[1, :], X_w_optimized[2, :], marker='.', c="red")
+    
+    #Matplotlib does not correctly manage the axis('equal')
+    xFakeBoundingBox = np.linspace(0, 4, 2)
+    yFakeBoundingBox = np.linspace(0, 4, 2)
+    zFakeBoundingBox = np.linspace(0, 4, 2)
+    plt.plot(xFakeBoundingBox, yFakeBoundingBox, zFakeBoundingBox, 'w.')
+    print('Close the figure to continue. Left button for orbit, right button for zoom.')
+    plt.show()
     
     # Project the 3d point to each camera and print residuals
     
