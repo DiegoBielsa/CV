@@ -252,12 +252,11 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     
     ######################### Get 3D points in cam 1 and 2 #########################
     p3D_1 = []
-    for i in range(0, nPoints * 4, 4):
+    for i in range(0, nPoints * 3, 3):
         x = Op[i + 6]
         y = Op[i + 7]
         z = Op[i + 8]
-        w = Op[i + 9]
-        p3D_1.append(np.array([x, y, z, w]))
+        p3D_1.append(np.array([x, y, z, 1]))
     p3D_1 = np.array(p3D_1);
     p3D_1 = p3D_1.T;
     
@@ -279,10 +278,10 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     
     loss = [];
     for i in range(nPoints):
-        e_1x = (x1Data[0, i] - p2D_1[0, i]) ** 2;
-        e_1y = (x1Data[1, i] - p2D_1[1, i]) ** 2;
-        e_2x = (x2Data[0, i] - p2D_2[0, i]) ** 2;
-        e_2y = (x2Data[1, i] - p2D_2[1, i]) ** 2;
+        e_1x = (x1Data[0, i] - p2D_1[0, i]);
+        e_1y = (x1Data[1, i] - p2D_1[1, i]);
+        e_2x = (x2Data[0, i] - p2D_2[0, i]);
+        e_2y = (x2Data[1, i] - p2D_2[1, i]);
         loss.append(e_1x);
         loss.append(e_1y);
         loss.append(e_2x);
@@ -599,7 +598,7 @@ if __name__ == '__main__':
     theta_rotation_test = crossMatrixInv(sc.linalg.logm(R_c2_c1));
     Op_test = [Transl_c2_c1[0], Transl_c2_c1[1], Transl_c2_c1[2], theta_rotation_test[0], theta_rotation_test[1], theta_rotation_test[2]];
     Op_test = np.array(Op_test);
-    Op_test = np.hstack((Op_test, XC1.T.flatten()));
+    Op_test = np.hstack((Op_test, XC1[:-1].T.flatten()));
     
     res = resBundleProjection(Op_test, x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]);
     
@@ -621,9 +620,18 @@ if __name__ == '__main__':
     theta_rotation = crossMatrixInv(sc.linalg.logm(R2));
     Op = [t1[0], t1[1], t1[2], theta_rotation[0], theta_rotation[1], theta_rotation[2]];
     Op = np.array(Op);
-    Op = np.hstack((Op, X_c1_estimated.T.flatten()));
+    Op = np.hstack((Op, X_c1_estimated[:-1].T.flatten()));
     
     # Perform bundle adjustment using least squares
     OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='lm')
+    
+    # Get the params optimized
+    R_Op = ;
+    T_Op = ;
+    X_c1_Op = ;
+    
+    # Print the 3d points optimized
+    
+    # Project the 3d point to each camera and print residuals
     
     a = 0;
