@@ -14,6 +14,8 @@
 #
 #####################################################################################
 
+
+####################IGNORE##################3
 from mpl_toolkits.mplot3d import Axes3D
 
 import matplotlib.pyplot as plt
@@ -223,7 +225,7 @@ def crossMatrix(x):
 
 #theta = crossMatrixInv(sc.linalg.logm(R))
 
-def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
+def resBundleProjection_2(Op, x1Data, x2Data, K_c, nPoints):
     """
     -input:
         Op: Optimization parameters: this must include a
@@ -647,10 +649,14 @@ if __name__ == '__main__':
     
     # Get the params optimized
     theta_optimized = np.array([OpOptim.x[3], OpOptim.x[4], OpOptim.x[5]])
+    theta_optimized_2 = np.array([OpOptim.x[9], OpOptim.x[10], OpOptim.x[11]])
     R_c2_c1_optimized = sc.linalg.expm(crossMatrix(theta_optimized))
     t_c2_c1_optimized = np.array([OpOptim.x[0], OpOptim.x[1], OpOptim.x[2]])
+    R_c3_c1_optimized = sc.linalg.expm(crossMatrix(theta_optimized_2))
+    t_c3_c1_optimized = np.array([OpOptim.x[6], OpOptim.x[7], OpOptim.x[8]])
     #print("t: ",t_c2_c1_optimized)
     T_c2_c1_optimized = np.vstack((np.hstack((R_c2_c1_optimized, t_c2_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
+    T_c3_c1_optimized = np.vstack((np.hstack((R_c3_c1_optimized, t_c3_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
     
     #print(T_c2_c1)
     #print(T_c2_c1_estimated2)
@@ -658,9 +664,9 @@ if __name__ == '__main__':
         
     p3D_1 = []
     for i in range(0, x1Data.shape[1] * 3, 3):
-        x = OpOptim.x[i + 6]
-        y = OpOptim.x[i + 7]
-        z = OpOptim.x[i + 8]
+        x = OpOptim.x[i + 12]
+        y = OpOptim.x[i + 13]
+        z = OpOptim.x[i + 14]
         p3D_1.append(np.array([x, y, z, 1]))
     p3D_1 = np.array(p3D_1);
     p3D_1 = p3D_1.T;
@@ -668,6 +674,7 @@ if __name__ == '__main__':
     
     # Print the 3d points optimized
     T_wc2_optimized = T_wc1 @ np.linalg.inv(T_c2_c1_optimized);
+    T_wc3_optimized = T_wc1 @ np.linalg.inv(T_c3_c1_optimized);
     X_w_optimized = T_wc1 @ p3D_1
     ax = plt.axes(projection='3d', adjustable='box')
     ax.set_xlabel('X')
@@ -678,6 +685,8 @@ if __name__ == '__main__':
     drawRefSystem(ax, np.eye(4, 4), '-', 'W')
     drawRefSystem(ax, T_wc2_optimized, '-', 'C2_optimized')
     drawRefSystem(ax, T_wc2_estimated, '-', 'C2_estimated')
+    drawRefSystem(ax, T_wc3_estimated, '-', 'C3_estimated')
+    drawRefSystem(ax, T_wc3_optimized, '-', 'C3_optimized')
     drawRefSystem(ax, T_wc1, '-', 'C1')
     drawRefSystem(ax, T_wc2, '-', 'C2')
     drawRefSystem(ax, T_wc3, '-', 'C3')

@@ -282,6 +282,80 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     loss = np.array(loss);
     return loss;
 
+def resBundleProjection_2(Op, x1Data, x2Data, K_c, nPoints):
+    """
+    -input:
+        Op: Optimization parameters: this must include a
+            paramtrization for T_21 (reference 1 seen from reference 2) Op = [t_x, t_y, t_z, theta1, theta2, theta3, t_x_2, t_y_2, t_z_2, theta1_2, theta2_2,
+             theta3_2, x, y, z, w]
+            in a proper way and for X1 (3D points in ref 1, our 3d points)             
+        x1Data: (3xnPoints) 2D points on image 1 (homogeneous
+            coordinates) [[x], [y], [w]] (3xn)
+        x2Data: (3xnPoints) 2D points on image 2 (homogeneous
+            coordinates) [[x], [y], [w]] (3xn)
+        K_c: (3x3) Intrinsic calibration matrix
+        nPoints: Number of points
+    -output:
+        res: residuals from the error between the 2D matched points
+            and the projected points from the 3D points
+            (2 equations/residuals per 2D point)
+    """
+    ######################### Get params #########################
+    theta = np.array([Op[3], Op[4], Op[5]])
+    R_c2_c1_toOp = sc.linalg.expm(crossMatrix(theta))
+    t_c2_c1_toOp = np.array([Op[0], Op[1], Op[2]])
+    T_c2_c1_toOp = np.vstack((np.hstack((R_c2_c1_toOp, t_c2_c1_toOp[:, np.newaxis])), [0, 0, 0, 1]))
+
+    theta_2 = np.array([Op[9], Op[10], Op[11]])
+    R_c3_c1_toOp = sc.linalg.expm(crossMatrix(theta_2))
+    t_c3_c1_toOp = np.array([Op[6], Op[7], Op[8]])
+    T_c3_c1_toOp = np.vstack((np.hstack((R_c3_c1_toOp, t_c3_c1_toOp[:, np.newaxis])), [0, 0, 0, 1]))
+    
+    P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
+    # Compute P_c1 and P_c2 regarding the 3d points in cam1
+    P_c1 = K_c @ P_canonical @ np.identity(4);
+    P_c2 = K_c @ P_canonical @ T_c2_c1_toOp;
+    P_c3 = K_c @ P_canonical @ T_c3_c1_toOp;
+    
+    ######################### Get 3D points in cam 1 and 2 #########################
+    p3D_1 = []
+    for i in range(0, nPoints * 3, 3):
+        x = Op[i + 12]
+        y = Op[i + 13]
+        z = Op[i + 14]
+        p3D_1.append(np.array([x, y, z, 1]))
+    p3D_1 = np.array(p3D_1);
+    p3D_1 = p3D_1.T;
+    
+    ######################### Project 3d points to each camera #########################
+    p2D_1 = P_c1 @ p3D_1;
+    p2D_1 = p2D_1 / p2D_1[2];
+    
+    p2D_2 = P_c2 @ p3D_1;
+    p2D_2 = p2D_2 / p2D_2[2];
+
+    p2D_3 = P_c3 @ p3D_1;
+    p2D_3 = p2D_3 / p2D_3[2];
+    
+    loss = [];
+    for i in range(nPoints):
+        e_1x = (x1Data[0, i] - p2D_1[0, i]);
+        e_1y = (x1Data[1, i] - p2D_1[1, i]);
+        e_2x = (x2Data[0, i] - p2D_2[0, i]);
+        e_2y = (x2Data[1, i] - p2D_2[1, i]);
+        e_3x = (x3Data[0, i] - p2D_3[0, i]);
+        e_3y = (x3Data[1, i] - p2D_3[1, i]);
+
+        loss.append(e_1x);
+        loss.append(e_1y);
+        loss.append(e_2x);
+        loss.append(e_2y);
+        loss.append(e_3x);
+        loss.append(e_3y);
+                
+    loss = np.array(loss);
+    return loss;
+
 def distanceLinePoint(line, point):
     return abs(line[0] * point[0] + line[1] * point[1] + line[2]) / math.sqrt(line[0] ** 2 + line[1] ** 2)
 
@@ -726,4 +800,120 @@ if __name__ == '__main__':
     T_c3_c1 = np.linalg.inv(T_c1_c3) # pose of camera 1 with respecto to the camera 3
     
     ############################################ EXERCISE 4 ############################################
-    a = 0
+        # Set parameters for bundle adjustment
+    X_c1_toOptp = T_c1_w @ X_own_w 
+    t_theta = math.atan(t1[1] / t1[0]);
+    t_phi = math.atan((math.sqrt(pow(t1[0], 2) + pow(t1[1], 2)))/t1[2]);
+    theta_rotation = crossMatrixInv(sc.linalg.logm(R2));
+    #R2_2--> Rotation matrix chosen after triangulation between camera 1 and 3
+    theta_rotation_2 = crossMatrixInv(sc.linalg.logm(R_c3_w_pnp))
+    #t1_2--> translation between camera 1 and 3
+    #theta_rotation_2--> rotation between camera 1 and 3
+    Op_2 = [t1[0], t1[1], t1[2], theta_rotation[0], theta_rotation[1], theta_rotation[2], t_c3_w_pnp[0], t_c3_w_pnp[1], t_c3_w_pnp[2], theta_rotation_2[0], theta_rotation_2[1], theta_rotation_2[2]];
+    #Op = [t_theta, t_phi, theta_rotation[0], theta_rotation[1], theta_rotation[2]];
+    Op_2 = np.array(Op_2);
+    Op_2 = np.hstack((Op_2, X_c1_toOptp[:-1].T.flatten()));
+    
+    # Perform bundle adjustment using least squares
+    #OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='lm')
+    OpOptim = scOptim.least_squares(resBundleProjection_2, Op_2, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='trf', jac='3-point', loss='huber')
+    
+    
+    # Get the params optimized
+    theta_optimized = np.array([OpOptim.x[3], OpOptim.x[4], OpOptim.x[5]])
+    theta_optimized_2 = np.array([OpOptim.x[9], OpOptim.x[10], OpOptim.x[11]])
+    R_c2_c1_optimized = sc.linalg.expm(crossMatrix(theta_optimized))
+    t_c2_c1_optimized = np.array([OpOptim.x[0], OpOptim.x[1], OpOptim.x[2]])
+    R_c3_c1_optimized = sc.linalg.expm(crossMatrix(theta_optimized_2))
+    t_c3_c1_optimized = np.array([OpOptim.x[6], OpOptim.x[7], OpOptim.x[8]])
+    #print("t: ",t_c2_c1_optimized)
+    T_c2_c1_optimized = np.vstack((np.hstack((R_c2_c1_optimized, t_c2_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
+    T_c3_c1_optimized = np.vstack((np.hstack((R_c3_c1_optimized, t_c3_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
+    
+    #print(T_c2_c1)
+    #print(T_c2_c1_estimated2)
+    #print(T_c2_c1_optimized)
+        
+    p3D_1 = []
+    for i in range(0, x1Data.shape[1] * 3, 3):
+        x = OpOptim.x[i + 12]
+        y = OpOptim.x[i + 13]
+        z = OpOptim.x[i + 14]
+        p3D_1.append(np.array([x, y, z, 1]))
+    p3D_1 = np.array(p3D_1);
+    p3D_1 = p3D_1.T;
+
+    
+    # Print the 3d points optimized
+    T_wc2_optimized = T_wc1 @ np.linalg.inv(T_c2_c1_optimized);
+    T_wc3_optimized = T_wc1 @ np.linalg.inv(T_c3_c1_optimized);
+    X_w_optimized = T_wc1 @ p3D_1
+    ax = plt.axes(projection='3d', adjustable='box')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    
+    drawRefSystem(ax, np.eye(4, 4), '-', 'W')
+    drawRefSystem(ax, T_wc2_optimized, '-', 'C2_optimized')
+    drawRefSystem(ax, T_wc2_estimated, '-', 'C2_estimated')
+    drawRefSystem(ax, T_c3_w_pnp, '-', 'C3_estimated')
+    drawRefSystem(ax, T_wc3_optimized, '-', 'C3_optimized')
+    drawRefSystem(ax, T_wc1, '-', 'C1')
+    drawRefSystem(ax, T_wc2, '-', 'C2')
+    drawRefSystem(ax, T_wc3, '-', 'C3')
+
+    ax.scatter(X_w[0, :], X_w[1, :], X_w[2, :], marker='.', c="green")
+    ax.scatter(X_own_w[0, :], X_own_w[1, :], X_own_w[2, :], marker='.', c="red")
+    ax.scatter(X_w_optimized[0, :], X_w_optimized[1, :], X_w_optimized[2, :], marker='.', c="blue")
+    
+    #Matplotlib does not correctly manage the axis('equal')
+    xFakeBoundingBox = np.linspace(0, 4, 2)
+    yFakeBoundingBox = np.linspace(0, 4, 2)
+    zFakeBoundingBox = np.linspace(0, 4, 2)
+    plt.plot(xFakeBoundingBox, yFakeBoundingBox, zFakeBoundingBox, 'w.')
+    print('Close the figure to continue. Left button for orbit, right button for zoom.')
+    plt.show()
+    
+    # Project the 3d point to each camera and print residuals
+    P_c1 = K_c @ P_canonical @ np.identity(4);
+    P_c2 = K_c @ P_canonical @ T_c2_c1_optimized;
+    P_c3 = K_c @ P_canonical @ T_c3_c1_optimized;
+    X_c2_2d = P_c2 @ p3D_1
+    X_c1_2d = P_c1 @ p3D_1
+    X_c3_2d = P_c3 @ p3D_1
+    
+    X_c2_2d = X_c2_2d / X_c2_2d[2]
+    X_c1_2d = X_c1_2d / X_c1_2d[2]
+    X_c3_2d = X_c3_2d / X_c3_2d[2]
+    
+    plt.figure(12)
+    plt.imshow(image_pers_1, cmap='gray', vmin=0, vmax=255)
+    plotResidual(x1Data, X_c1_2d, 'k-')
+    plt.plot(X_c1_2d[0, :], X_c1_2d[1, :], 'bo')
+    plt.plot(x1Data[0, :], x1Data[1, :], 'rx')
+    plotNumberedImagePoints(x1Data[0:2, :], 'r', 4)
+    plt.title('Image 2')
+    plt.draw()
+    plt.show()
+    
+    plt.figure(13)
+    plt.imshow(image_pers_2, cmap='gray', vmin=0, vmax=255)
+    plotResidual(x2Data, X_c2_2d, 'k-')
+    plt.plot(X_c2_2d[0, :], X_c2_2d[1, :], 'bo')
+    plt.plot(x2Data[0, :], x2Data[1, :], 'rx')
+    plotNumberedImagePoints(x2Data[0:2, :], 'r', 4)
+    plt.title('Image 2')
+    plt.draw()
+    plt.show()
+
+    plt.figure(14)
+    plt.imshow(image_pers_3, cmap='gray', vmin=0, vmax=255)
+    plotResidual(x3Data, X_c3_2d, 'k-')
+    plt.plot(X_c3_2d[0, :], X_c3_2d[1, :], 'bo')
+    plt.plot(x3Data[0, :], x3Data[1, :], 'rx')
+    plotNumberedImagePoints(x3Data[0:2, :], 'r', 4)
+    plt.title('Image 3')
+    plt.draw()
+    plt.show()
+    
