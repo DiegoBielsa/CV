@@ -575,7 +575,7 @@ if __name__ == '__main__':
     plt.plot(xFakeBoundingBox, yFakeBoundingBox, zFakeBoundingBox, 'w.')
     print('Close the figure to continue. Left button for orbit, right button for zoom.')
     plt.show()
-    
+    ############################################ EXERCISE 2 ############################################
     # ----------------------------- TEST BUNDLE ADJUSTMENT ----------------------------- #
     # Test with the initial solution
     T_c2_c1 = T_c2_w @ T_wc1;
@@ -633,10 +633,9 @@ if __name__ == '__main__':
     #print("t: ",t_c2_c1_optimized)
     T_c2_c1_optimized = np.vstack((np.hstack((R_c2_c1_optimized, t_c2_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
     
-    print(T_c2_c1)
-    print(T_c2_c1_estimated2)
-    print(T_c2_c1_optimized)
-    
+    #print(T_c2_c1)
+    #print(T_c2_c1_estimated2)
+    #print(T_c2_c1_optimized)
         
     p3D_1 = []
     for i in range(0, x1Data.shape[1] * 3, 3):
@@ -705,4 +704,13 @@ if __name__ == '__main__':
     plt.draw()
     plt.show()
     
-    a = 0;
+    ############################################ EXERCISE 3 ############################################
+    Points_3d = np.ascontiguousarray(X_own_w[0:3,:].T).reshape((X_own_w.shape[1], 1, 3))
+    Points_c1_2d = np.ascontiguousarray(x1Data[0:2,:].T).reshape((x1Data.shape[1], 1, 2))
+    Points_c3_2d = np.ascontiguousarray(x3Data[0:2,:].T).reshape((x3Data.shape[1], 1, 2))
+    
+    retval_c1, rvec_c1, tvec_c1 = cv2.solvePnP(Points_3d, x1Data, K_c, 0, flags=cv2.SOLVEPNP_EPNP)
+    
+    retval_c3, rvec_c3, tvec_c3 = cv2.solvePnP(Points_3d, x3Data, K_c, 0, flags=cv2.SOLVEPNP_EPNP)
+    
+    a = 0
