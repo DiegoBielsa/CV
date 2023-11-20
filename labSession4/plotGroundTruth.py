@@ -256,8 +256,11 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
         x = Op[i + 6]
         y = Op[i + 7]
         z = Op[i + 8]
+        #w = Op[i + 9]
         p3D_1.append(np.array([x, y, z, 1]))
+        #p3D_1.append(np.array([x, y, z, w]))
     p3D_1 = np.array(p3D_1);
+    #p3D_1 = p3D_1/p3D_1[3]
     p3D_1 = p3D_1.T;
     
     p3D_2 = T_c2_c1 @ p3D_1
@@ -471,11 +474,11 @@ if __name__ == '__main__':
     
     R1 = U @ W @ V # calcular determinante
     np.linalg.det(R1);
-    if np.round(np.linalg.det(R1)) == -1:
+    if (np.round(np.linalg.det(R1)) == -1):
         R1 *= -1
     R2 = U @ W.T @ V # calculo determinante y si sale -1 la multiplico por -1
     np.linalg.det(R2);
-    if np.round(np.linalg.det(R2)) == -1:
+    if (np.round(np.linalg.det(R2)) == -1):
         R2 *= -1
     
     
@@ -598,6 +601,10 @@ if __name__ == '__main__':
     Op_test = [Transl_c2_c1[0], Transl_c2_c1[1], Transl_c2_c1[2], theta_rotation_test[0], theta_rotation_test[1], theta_rotation_test[2]];
     Op_test = np.array(Op_test);
     Op_test = np.hstack((Op_test, XC1[:-1].T.flatten()));
+    #Op_test = np.hstack((Op_test, XC1.T.flatten()));
+    #print("Op_test:")
+    #print(Op_test) 
+    #print("-----------------")
     
     res = resBundleProjection(Op_test, x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]);
     
@@ -622,12 +629,14 @@ if __name__ == '__main__':
     Op = np.hstack((Op, X_c1_estimated[:-1].T.flatten()));
     
     # Perform bundle adjustment using least squares
-    OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='lm')
+    OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='trf')
+    
     
     # Get the params optimized
     theta_optimized = np.array([OpOptim.x[3], OpOptim.x[4], OpOptim.x[5]])
     R_c2_c1_optimized = sc.linalg.expm(crossMatrix(theta_optimized))
     t_c2_c1_optimized = np.array([OpOptim.x[0], OpOptim.x[1], OpOptim.x[2]])
+    #print("t: ",t_c2_c1_optimized)
     T_c2_c1_optimized = np.vstack((np.hstack((R_c2_c1_optimized, t_c2_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
     
     print(T_c2_c1)
@@ -674,3 +683,5 @@ if __name__ == '__main__':
     # Project the 3d point to each camera and print residuals
     
     a = 0;
+    #print(T_wc2_estimated_2)
+    #print(T_wc2_estimated)
