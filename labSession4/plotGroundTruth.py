@@ -242,13 +242,13 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     """
     ######################### Get params #########################
     theta = np.array([Op[3], Op[4], Op[5]])
-    R_c2_c1 = sc.linalg.expm(crossMatrix(theta))
-    t_c2_c1 = np.array([Op[0], Op[1], Op[2]])
-    T_c2_c1 = np.vstack((np.hstack((R_c2_c1, t_c2_c1[:, np.newaxis])), [0, 0, 0, 1]))
+    R_c2_c1_toOp = sc.linalg.expm(crossMatrix(theta))
+    t_c2_c1_toOp = np.array([Op[0], Op[1], Op[2]])
+    T_c2_c1_toOp = np.vstack((np.hstack((R_c2_c1_toOp, t_c2_c1_toOp[:, np.newaxis])), [0, 0, 0, 1]))
     
     P_canonical = np.array([[1, 0, 0 ,0], [0, 1, 0 ,0], [0, 0, 1, 0]]);
-    P_c1 = K_c @ P_canonical;
-    P_c2 = K_c @ P_canonical;
+    P_c1 = K_c @ P_canonical @ T_c1_w;
+    P_c2 = K_c @ P_canonical @ T_c2_w;
     
     ######################### Get 3D points in cam 1 and 2 #########################
     p3D_1 = []
@@ -260,17 +260,20 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     p3D_1 = np.array(p3D_1);
     p3D_1 = p3D_1.T;
     
-    p3D_2 = T_c2_c1 @ p3D_1
+    p3D_2 = T_c2_c1_toOp @ p3D_1
+    
+    p3D_1_w = T_wc1 @ p3D_1
+    p3D_2_w = T_wc2 @ p3D_2
     
     ######################### Project 3d points to each camera #########################
     p2D_1 = [];
     p2D_2 = [];
     for i in range(p3D_1.shape[1]):
-        p2d_1 = P_c1 @ p3D_1[:, i];
+        p2d_1 = P_c1 @ p3D_1_w[:, i];
         p2d_1 = p2d_1 / p2d_1[2];
         p2D_1.append(p2d_1);
         
-        p2d_2 = P_c2 @ p3D_2[:, i];
+        p2d_2 = P_c2 @ p3D_2_w[:, i];
         p2d_2 = p2d_2 / p2d_2[2];
         p2D_2.append(p2d_2);
     p2D_1 = np.array(p2D_1).T;
@@ -278,15 +281,15 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     
     loss = [];
     for i in range(nPoints):
-        e_1x = (p2D_1[0, i] - x1Data[0, i]);
-        e_1y = (p2D_1[1, i] - x1Data[1, i]);
-        e_2x = (p2D_2[0, i] - x2Data[0, i]);
-        e_2y = (p2D_2[1, i] - x2Data[1, i]);
+        e_1x = abs((x1Data[0, i] - p2D_1[0, i]));
+        e_1y = abs((x1Data[1, i] - p2D_1[1, i]));
+        e_2x = abs((x2Data[0, i] - p2D_2[0, i]));
+        e_2y = abs((x2Data[1, i] - p2D_2[1, i]));
         loss.append(e_1x);
-        loss.append(e_2x);
         loss.append(e_1y);
+        loss.append(e_2x);
         loss.append(e_2y);
-        
+                
     loss = np.array(loss);
     return loss;
 
@@ -573,7 +576,7 @@ if __name__ == '__main__':
     drawRefSystem(ax, T_wc2, '-', 'C2')
     drawRefSystem(ax, T_wc3, '-', 'C3')
 
-    ax.scatter(X_own_w[0, :], X_own_w[1, :], X_own_w[2, :], marker='.', c="green")
+    ax.scatter(X_w[0, :], X_w[1, :], X_w[2, :], marker='.', c="green")
     ax.scatter(X_w_estimated[0, :], X_w_estimated[1, :], X_w_estimated[2, :], marker='.', c="red")
 
     #Matplotlib does not correctly manage the axis('equal')
@@ -616,13 +619,16 @@ if __name__ == '__main__':
     
     # ----------------------------- BUNDLE ADJUSTMENT ----------------------------- #
     # Set parameters for bundle adjustment
+    X_c1_toOptp = T_c1_w @ X_own_w 
     theta_rotation = crossMatrixInv(sc.linalg.logm(R2));
     Op = [t1[0], t1[1], t1[2], theta_rotation[0], theta_rotation[1], theta_rotation[2]];
     Op = np.array(Op);
     Op = np.hstack((Op, X_c1_estimated[:-1].T.flatten()));
     
     # Perform bundle adjustment using least squares
-    OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='lm')
+    #OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='lm')
+    OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='trf', jac='3-point', loss='huber')
+    
     
     # Get the params optimized
     theta_optimized = np.array([OpOptim.x[3], OpOptim.x[4], OpOptim.x[5]])
@@ -646,7 +652,7 @@ if __name__ == '__main__':
 
     
     # Print the 3d points optimized
-    T_wc2_estimated = T_wc1 @ np.linalg.inv(T_c2_c1_optimized);
+    T_wc2_optimized = T_wc1 @ np.linalg.inv(T_c2_c1_optimized);
     X_w_optimized = T_wc1 @ p3D_1
     ax = plt.axes(projection='3d', adjustable='box')
     ax.set_xlabel('X')
@@ -655,13 +661,15 @@ if __name__ == '__main__':
 
     
     drawRefSystem(ax, np.eye(4, 4), '-', 'W')
+    drawRefSystem(ax, T_wc2_optimized, '-', 'C2_optimized')
     drawRefSystem(ax, T_wc2_estimated, '-', 'C2_estimated')
     drawRefSystem(ax, T_wc1, '-', 'C1')
     drawRefSystem(ax, T_wc2, '-', 'C2')
     drawRefSystem(ax, T_wc3, '-', 'C3')
 
-    ax.scatter(X_own_w[0, :], X_own_w[1, :], X_own_w[2, :], marker='.', c="green")
-    ax.scatter(X_w_optimized[0, :], X_w_optimized[1, :], X_w_optimized[2, :], marker='.', c="red")
+    ax.scatter(X_w[0, :], X_w[1, :], X_w[2, :], marker='.', c="green")
+    ax.scatter(X_w_estimated[0, :], X_w_estimated[1, :], X_w_estimated[2, :], marker='.', c="red")
+    ax.scatter(X_w_optimized[0, :], X_w_optimized[1, :], X_w_optimized[2, :], marker='.', c="blue")
     
     #Matplotlib does not correctly manage the axis('equal')
     xFakeBoundingBox = np.linspace(0, 4, 2)
@@ -672,5 +680,30 @@ if __name__ == '__main__':
     plt.show()
     
     # Project the 3d point to each camera and print residuals
+    X_c2_2d = P_c2 @ X_w_optimized
+    X_c1_2d = P_c1 @ X_w_optimized
+    
+    X_c2_2d = X_c2_2d / X_c2_2d[2]
+    X_c1_2d = X_c1_2d / X_c1_2d[2]
+    
+    plt.figure(12)
+    plt.imshow(image_pers_1, cmap='gray', vmin=0, vmax=255)
+    plotResidual(x1Data, X_c1_2d, 'k-')
+    plt.plot(X_c1_2d[0, :], X_c1_2d[1, :], 'bo')
+    plt.plot(x1Data[0, :], x1Data[1, :], 'rx')
+    plotNumberedImagePoints(x1Data[0:2, :], 'r', 4)
+    plt.title('Image 2')
+    plt.draw()
+    plt.show()
+    
+    plt.figure(13)
+    plt.imshow(image_pers_2, cmap='gray', vmin=0, vmax=255)
+    plotResidual(x2Data, X_c2_2d, 'k-')
+    plt.plot(X_c2_2d[0, :], X_c2_2d[1, :], 'bo')
+    plt.plot(x2Data[0, :], x2Data[1, :], 'rx')
+    plotNumberedImagePoints(x2Data[0:2, :], 'r', 4)
+    plt.title('Image 2')
+    plt.draw()
+    plt.show()
     
     a = 0;
