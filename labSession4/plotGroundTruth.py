@@ -705,12 +705,25 @@ if __name__ == '__main__':
     plt.show()
     
     ############################################ EXERCISE 3 ############################################
-    Points_3d = np.ascontiguousarray(X_own_w[0:3,:].T).reshape((X_own_w.shape[1], 1, 3))
-    Points_c1_2d = np.ascontiguousarray(x1Data[0:2,:].T).reshape((x1Data.shape[1], 1, 2))
-    Points_c3_2d = np.ascontiguousarray(x3Data[0:2,:].T).reshape((x3Data.shape[1], 1, 2))
+    Points_3d = np.ascontiguousarray(X_own_w[0:3,:].T).reshape((X_own_w.shape[1], 3))
+    Points_c1_2d = np.ascontiguousarray(x1Data[0:2,:].T).reshape((x1Data.shape[1], 2))
+    Points_c3_2d = np.ascontiguousarray(x3Data[0:2,:].T).reshape((x3Data.shape[1], 2))
+    distortion_coeffs = np.zeros((4, 1))
     
-    retval_c1, rvec_c1, tvec_c1 = cv2.solvePnP(Points_3d, x1Data, K_c, 0, flags=cv2.SOLVEPNP_EPNP)
+    # This will give T_c1_w
+    retval_c1, rvec_c1, tvec_c1 = cv2.solvePnP(Points_3d, Points_c1_2d, K_c, distortion_coeffs, flags=cv2.SOLVEPNP_EPNP)
+    R_c1_w_pnp = sc.linalg.expm(crossMatrix(rvec_c1))
+    t_c1_w_pnp = np.array([tvec_c1[0], tvec_c1[1], tvec_c1[2]])
+    T_c1_w_pnp = np.vstack((np.hstack((R_c1_w_pnp, t_c1_w_pnp[:])), [0, 0, 0, 1]))
     
-    retval_c3, rvec_c3, tvec_c3 = cv2.solvePnP(Points_3d, x3Data, K_c, 0, flags=cv2.SOLVEPNP_EPNP)
+    # This will give T_c3_w
+    retval_c3, rvec_c3, tvec_c3 = cv2.solvePnP(Points_3d, Points_c3_2d, K_c, distortion_coeffs, flags=cv2.SOLVEPNP_EPNP)
+    R_c3_w_pnp = sc.linalg.expm(crossMatrix(rvec_c3))
+    t_c3_w_pnp = np.array([tvec_c3[0], tvec_c3[1], tvec_c3[2]])
+    T_c3_w_pnp = np.vstack((np.hstack((R_c3_w_pnp, t_c3_w_pnp[:])), [0, 0, 0, 1]))
     
+    T_c1_c3 = T_c1_w_pnp @ np.linalg.inv(T_c3_w_pnp); # pose of camera 3 with respecto to the camera 1
+    T_c3_c1 = np.linalg.inv(T_c1_c3) # pose of camera 1 with respecto to the camera 3
+    
+    ############################################ EXERCISE 4 ############################################
     a = 0
