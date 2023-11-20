@@ -227,7 +227,7 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     """
     -input:
         Op: Optimization parameters: this must include a
-            paramtrization for T_21 (reference 1 seen from reference 2) Op = [t_x, t_y, t_z, theta1, theta2, theta3, x, y, z, w]
+            paramtrization for T_21 (reference 1 seen from reference 2) Op = [t_x, t_y, t_z, theta1, theta2, theta3, x, y, z]
             in a proper way and for X1 (3D points in ref 1, our 3d points)             
         x1Data: (3xnPoints) 2D points on image 1 (homogeneous
             coordinates) [[x], [y], [w]] (3xn)
@@ -282,12 +282,12 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     loss = np.array(loss);
     return loss;
 
-def resBundleProjection_2(Op, x1Data, x2Data, K_c, nPoints):
+def resBundleProjection_2(Op, x1Data, x2Data, x3Data, K_c, nPoints):
     """
     -input:
         Op: Optimization parameters: this must include a
             paramtrization for T_21 (reference 1 seen from reference 2) Op = [t_x, t_y, t_z, theta1, theta2, theta3, t_x_2, t_y_2, t_z_2, theta1_2, theta2_2,
-             theta3_2, x, y, z, w]
+             theta3_2, x, y, z]
             in a proper way and for X1 (3D points in ref 1, our 3d points)             
         x1Data: (3xnPoints) 2D points on image 1 (homogeneous
             coordinates) [[x], [y], [w]] (3xn)
@@ -450,7 +450,7 @@ if __name__ == '__main__':
                                    None,
                                    flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS and cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-    """plt.figure(2)
+    plt.figure(2)
     plt.imshow(imgMatched12)
     plt.title("{} matches between views 1 and 2".format(len(dMatchesList12)))
     plt.draw()
@@ -459,7 +459,7 @@ if __name__ == '__main__':
     plt.imshow(imgMatched13)
     plt.title("{} matches between views 1 and 3".format(len(dMatchesList13)))
     print('Close the figures to continue.')
-    plt.show()"""
+    plt.show()
 
     # Project the points
     x1_p = K_c @ np.eye(3, 4) @ np.linalg.inv(T_wc1) @ X_w
@@ -471,7 +471,7 @@ if __name__ == '__main__':
 
 
     # Plot the 2D points
-    """plt.figure(4)
+    plt.figure(4)
     plt.imshow(image_pers_1, cmap='gray', vmin=0, vmax=255)
     plotResidual(x1Data, x1_p, 'k-')
     plt.plot(x1_p[0, :], x1_p[1, :], 'bo')
@@ -497,7 +497,7 @@ if __name__ == '__main__':
     plotNumberedImagePoints(x3Data[0:2, :], 'r', 4)
     plt.title('Image 3')
     print('Close the figures to continue.')
-    plt.show()"""
+    plt.show()
     
     # ----------------------------- USING OUR F ----------------------------- #
     p1_norm = [];
@@ -513,6 +513,8 @@ if __name__ == '__main__':
         x2Norm = N2 @ np.array([x2Data_T[i][0], x2Data_T[i][1], x1Data_T[i][2]]).T;
         p2_norm.append(x2Norm);
     p2_norm = np.array(p2_norm);
+    
+    x3Data_T = np.vstack((x3Data, np.ones((1, x3Data.shape[1])))).T
     
     F_21 = getFundamentalMatrix(x1Data_T, x2Data_T);
     #For unnormalizing the resulting F matrix, before evaluating the matches:
@@ -674,7 +676,7 @@ if __name__ == '__main__':
     x1_p_test = K_c @ np.eye(3, 4) @ XC1
     x1_p_test /= x1_p_test[2, :]
     
-    """plt.figure(8)
+    plt.figure(8)
     plt.imshow(image_pers_1, cmap='gray', vmin=0, vmax=255)
     plotResidual(x1Data, x1_p_test, 'k-')
     plt.plot(x1_p_test[0, :], x1_p_test[1, :], 'bo')
@@ -682,7 +684,7 @@ if __name__ == '__main__':
     plotNumberedImagePoints(x1Data[0:2, :], 'r', 4)
     plt.title('Image 1')
     plt.draw()
-    plt.show()"""
+    plt.show()
     
     # ----------------------------- BUNDLE ADJUSTMENT ----------------------------- #
     # Set parameters for bundle adjustment
@@ -800,23 +802,24 @@ if __name__ == '__main__':
     T_c3_c1 = np.linalg.inv(T_c1_c3) # pose of camera 1 with respecto to the camera 3
     
     ############################################ EXERCISE 4 ############################################
-        # Set parameters for bundle adjustment
+    # Set parameters for bundle adjustment T_21
     X_c1_toOptp = T_c1_w @ X_own_w 
     t_theta = math.atan(t1[1] / t1[0]);
     t_phi = math.atan((math.sqrt(pow(t1[0], 2) + pow(t1[1], 2)))/t1[2]);
     theta_rotation = crossMatrixInv(sc.linalg.logm(R2));
-    #R2_2--> Rotation matrix chosen after triangulation between camera 1 and 3
-    theta_rotation_2 = crossMatrixInv(sc.linalg.logm(R_c3_w_pnp))
-    #t1_2--> translation between camera 1 and 3
-    #theta_rotation_2--> rotation between camera 1 and 3
-    Op_2 = [t1[0], t1[1], t1[2], theta_rotation[0], theta_rotation[1], theta_rotation[2], t_c3_w_pnp[0], t_c3_w_pnp[1], t_c3_w_pnp[2], theta_rotation_2[0], theta_rotation_2[1], theta_rotation_2[2]];
+    # Set parameters for bundle adjustment T_31
+    R_c3_c1 = T_c3_c1[:3, :3];
+    Transl_c3_c1 = T_c3_c1[:3, 3];
+    theta_rotation_2 = crossMatrixInv(sc.linalg.logm(R_c3_c1))
+    
+    Op_2 = [t1[0], t1[1], t1[2], theta_rotation[0], theta_rotation[1], theta_rotation[2], Transl_c3_c1[0], Transl_c3_c1[1], Transl_c3_c1[2], theta_rotation_2[0], theta_rotation_2[1], theta_rotation_2[2]];
     #Op = [t_theta, t_phi, theta_rotation[0], theta_rotation[1], theta_rotation[2]];
     Op_2 = np.array(Op_2);
     Op_2 = np.hstack((Op_2, X_c1_toOptp[:-1].T.flatten()));
     
     # Perform bundle adjustment using least squares
     #OpOptim = scOptim.least_squares(resBundleProjection, Op, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='lm')
-    OpOptim = scOptim.least_squares(resBundleProjection_2, Op_2, args=(x1Data_T.T, x2Data_T.T, K_c, x1Data.shape[1]), method='trf', jac='3-point', loss='huber')
+    OpOptim = scOptim.least_squares(resBundleProjection_2, Op_2, args=(x1Data_T.T, x2Data_T.T, x3Data_T.T, K_c, x1Data.shape[1]), method='trf', jac='3-point', loss='huber')
     
     
     # Get the params optimized
@@ -826,13 +829,9 @@ if __name__ == '__main__':
     t_c2_c1_optimized = np.array([OpOptim.x[0], OpOptim.x[1], OpOptim.x[2]])
     R_c3_c1_optimized = sc.linalg.expm(crossMatrix(theta_optimized_2))
     t_c3_c1_optimized = np.array([OpOptim.x[6], OpOptim.x[7], OpOptim.x[8]])
-    #print("t: ",t_c2_c1_optimized)
     T_c2_c1_optimized = np.vstack((np.hstack((R_c2_c1_optimized, t_c2_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
     T_c3_c1_optimized = np.vstack((np.hstack((R_c3_c1_optimized, t_c3_c1_optimized[:, np.newaxis])), [0, 0, 0, 1]))
-    
-    #print(T_c2_c1)
-    #print(T_c2_c1_estimated2)
-    #print(T_c2_c1_optimized)
+
         
     p3D_1 = []
     for i in range(0, x1Data.shape[1] * 3, 3):
@@ -845,6 +844,7 @@ if __name__ == '__main__':
 
     
     # Print the 3d points optimized
+    T_wc3_estimated = np.linalg.inv(T_c3_w_pnp);
     T_wc2_optimized = T_wc1 @ np.linalg.inv(T_c2_c1_optimized);
     T_wc3_optimized = T_wc1 @ np.linalg.inv(T_c3_c1_optimized);
     X_w_optimized = T_wc1 @ p3D_1
@@ -857,7 +857,7 @@ if __name__ == '__main__':
     drawRefSystem(ax, np.eye(4, 4), '-', 'W')
     drawRefSystem(ax, T_wc2_optimized, '-', 'C2_optimized')
     drawRefSystem(ax, T_wc2_estimated, '-', 'C2_estimated')
-    drawRefSystem(ax, T_c3_w_pnp, '-', 'C3_estimated')
+    drawRefSystem(ax, T_wc3_estimated, '-', 'C3_estimated')
     drawRefSystem(ax, T_wc3_optimized, '-', 'C3_optimized')
     drawRefSystem(ax, T_wc1, '-', 'C1')
     drawRefSystem(ax, T_wc2, '-', 'C2')
@@ -879,15 +879,15 @@ if __name__ == '__main__':
     P_c1 = K_c @ P_canonical @ np.identity(4);
     P_c2 = K_c @ P_canonical @ T_c2_c1_optimized;
     P_c3 = K_c @ P_canonical @ T_c3_c1_optimized;
-    X_c2_2d = P_c2 @ p3D_1
     X_c1_2d = P_c1 @ p3D_1
+    X_c2_2d = P_c2 @ p3D_1
     X_c3_2d = P_c3 @ p3D_1
     
-    X_c2_2d = X_c2_2d / X_c2_2d[2]
     X_c1_2d = X_c1_2d / X_c1_2d[2]
+    X_c2_2d = X_c2_2d / X_c2_2d[2]
     X_c3_2d = X_c3_2d / X_c3_2d[2]
     
-    plt.figure(12)
+    plt.figure(20)
     plt.imshow(image_pers_1, cmap='gray', vmin=0, vmax=255)
     plotResidual(x1Data, X_c1_2d, 'k-')
     plt.plot(X_c1_2d[0, :], X_c1_2d[1, :], 'bo')
@@ -895,9 +895,8 @@ if __name__ == '__main__':
     plotNumberedImagePoints(x1Data[0:2, :], 'r', 4)
     plt.title('Image 2')
     plt.draw()
-    plt.show()
     
-    plt.figure(13)
+    plt.figure(21)
     plt.imshow(image_pers_2, cmap='gray', vmin=0, vmax=255)
     plotResidual(x2Data, X_c2_2d, 'k-')
     plt.plot(X_c2_2d[0, :], X_c2_2d[1, :], 'bo')
@@ -905,9 +904,8 @@ if __name__ == '__main__':
     plotNumberedImagePoints(x2Data[0:2, :], 'r', 4)
     plt.title('Image 2')
     plt.draw()
-    plt.show()
 
-    plt.figure(14)
+    plt.figure(22)
     plt.imshow(image_pers_3, cmap='gray', vmin=0, vmax=255)
     plotResidual(x3Data, X_c3_2d, 'k-')
     plt.plot(X_c3_2d[0, :], X_c3_2d[1, :], 'bo')
@@ -916,4 +914,6 @@ if __name__ == '__main__':
     plt.title('Image 3')
     plt.draw()
     plt.show()
+    
+    a = 0;
     
