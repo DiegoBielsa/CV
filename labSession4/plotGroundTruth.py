@@ -270,10 +270,10 @@ def resBundleProjection(Op, x1Data, x2Data, K_c, nPoints):
     
     loss = [];
     for i in range(nPoints):
-        e_1x = abs((x1Data[0, i] - p2D_1[0, i]));
-        e_1y = abs((x1Data[1, i] - p2D_1[1, i]));
-        e_2x = abs((x2Data[0, i] - p2D_2[0, i]));
-        e_2y = abs((x2Data[1, i] - p2D_2[1, i]));
+        e_1x = (x1Data[0, i] - p2D_1[0, i]);
+        e_1y = (x1Data[1, i] - p2D_1[1, i]);
+        e_2x = (x2Data[0, i] - p2D_2[0, i]);
+        e_2y = (x2Data[1, i] - p2D_2[1, i]);
         loss.append(e_1x);
         loss.append(e_1y);
         loss.append(e_2x);
