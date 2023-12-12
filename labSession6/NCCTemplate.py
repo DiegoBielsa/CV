@@ -34,7 +34,12 @@ def normalized_cross_correlation(patch: np.array, search_area: np.array) -> np.a
     """
     # Complete the function
     i0 = patch
-    # ....
+    sum0 = np.sum(i0)
+    mean0 = sum0/i0.shape[0]/i0.shape[1]
+    i0_subs = i0-mean0
+    norm0 = np.linalg.norm(i0_subs)
+    i0_n = i0_subs / norm0
+
     result = np.zeros(search_area.shape, dtype=np.float)
     margin_y = int(patch.shape[0]/2)
     margin_x = int(patch.shape[1]/2)
@@ -43,8 +48,13 @@ def normalized_cross_correlation(patch: np.array, search_area: np.array) -> np.a
         for j in range(margin_x, search_area.shape[1] - margin_x):
             i1 = search_area[i-margin_x:i + margin_x + 1, j-margin_y:j + margin_y + 1]
             # Implement the correlation
-            # ...
-            # result[i, j] = ...
+            sum = np.sum(i1)
+            mean = sum/i1.shape[0]/i1.shape[1]
+            i1_subs = i1-mean
+            norm = np.linalg.norm(i1_subs)
+            i1_n = i1_subs / norm
+            mult = i0_n * i1_n
+            result[i, j] = np.sum(mult)
     return result
 
 
