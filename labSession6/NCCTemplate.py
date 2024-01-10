@@ -17,6 +17,7 @@
 import numpy as np
 import cv2 as cv
 import interpolation as ip
+import matplotlib.pyplot as plt
 
 
 def read_image(filename: str, ):
@@ -85,7 +86,7 @@ def lucasKanade(img0_gray, img1_gray, ini_flow: np.array, points_selected: np.ar
     #print(flow_shape)
     new_flow = np.zeros(ini_flow.shape, dtype=float)
     
-    threshold = 0.0001
+    threshold = 0.000001
     for i in range(0, points_selected.shape[0]):
         #print("i: ",i)
         
@@ -161,9 +162,40 @@ def lucasKanade(img0_gray, img1_gray, ini_flow: np.array, points_selected: np.ar
     
     return new_flow
 
+def read_flo_file(filename, verbose=False):
+        """
+        Read from .flo optical flow file (Middlebury format)
+        :param flow_file: name of the flow file
+        :return: optical flow data in matrix
+
+        adapted from https://github.com/liruoteng/OpticalFlowToolkit/
+
+        """
+        f = open(filename, 'rb')
+        magic = np.fromfile(f, np.float32, count=1)
+        data2d = None
+
+        if 202021.25 != magic:
+            raise TypeError('Magic number incorrect. Invalid .flo file')
+        else:
+            w = np.fromfile(f, np.int32, count=1)
+            h = np.fromfile(f, np.int32, count=1)
+            if verbose:
+                print("Reading %d x %d flow file in .flo format" % (h, w))
+            data2d = np.fromfile(f, np.float32, count=int(2 * w * h))
+            # reshape data into 3D array (columns, rows, channels)
+            data2d = np.resize(data2d, (h[0], w[0], 2))
+        f.close()
+        return data2d
+
+
+
 
 if __name__ == '__main__':
     np.set_printoptions(precision=4, linewidth=1024, suppress=True)
+    unknownFlowThresh = 1e9
+    flow_12 = read_flo_file("flow10.flo", verbose=True)
+    binUnknownFlow = flow_12 > unknownFlowThresh
 
     img1 = read_image("frame10.png")
     img2 = read_image("frame11.png")
@@ -186,6 +218,59 @@ if __name__ == '__main__':
     print(seed_optical_flow_sparse)
     new_flow = lucasKanade(img1_gray, img2_gray, seed_optical_flow_sparse, points_selected, template_size_half)
     print("new_flow: ", new_flow)
-    
 
+    ## Sparse optical flow
+    flow_gt = flow_12[points_selected[:, 1].astype(int), points_selected[:, 0].astype(int)].astype(float)
+    flow_est_sparse = seed_optical_flow_sparse#[points_selected[:, 1].astype(int), points_selected[:, 0].astype(int)]
+    flow_est_sparse_norm = np.sqrt(np.sum(flow_est_sparse ** 2, axis=1))
+    error_sparse = flow_est_sparse - flow_gt
+    error_sparse_norm = np.sqrt(np.sum(error_sparse ** 2, axis=1))
+
+
+    # Plot results for sparse optical flow
+    fig, axs = plt.subplots(1, 2)
+    axs[0].imshow(img1)
+    axs[0].plot(points_selected[:, 0], points_selected[:, 1], '+r', markersize=15)
+    for k in range(points_selected.shape[0]):
+        axs[0].text(points_selected[k, 0] + 5, points_selected[k, 1] + 5, '{:.2f}'.format(flow_est_sparse_norm[k]), color='r')
+    axs[0].quiver(points_selected[:, 0], points_selected[:, 1], flow_est_sparse[:, 0], flow_est_sparse[:, 1], color='b', angles='xy', scale_units='xy', scale=0.05)
+    axs[0].title.set_text('Optical flow')
+    axs[1].imshow(img1)
+    axs[1].plot(points_selected[:, 0], points_selected[:, 1], '+r', markersize=15)
+    for k in range(points_selected.shape[0]):
+        axs[1].text(points_selected[k, 0] + 5, points_selected[k, 1] + 5, '{:.2f}'.format(error_sparse_norm[k]),
+                    color='r')
+    axs[1].quiver(points_selected[:, 0], points_selected[:, 1], error_sparse[:, 0], error_sparse[:, 1], color='b',
+               angles='xy', scale_units='xy', scale=0.05)
+
+    axs[1].title.set_text('Error of first estimation respect to GT')
+
+    #---------------------------------------------------------------------------------------------------------------
+    
+    ## Sparse optical flow
+    flow_gt = flow_12[points_selected[:, 1].astype(int), points_selected[:, 0].astype(int)].astype(float)
+    flow_est_sparse = new_flow#[points_selected[:, 1].astype(int), points_selected[:, 0].astype(int)]
+    flow_est_sparse_norm = np.sqrt(np.sum(flow_est_sparse ** 2, axis=1))
+    error_sparse = flow_est_sparse - flow_gt
+    error_sparse_norm = np.sqrt(np.sum(error_sparse ** 2, axis=1))
+
+
+    # Plot results for sparse optical flow
+    fig, axs = plt.subplots(1, 2)
+    axs[0].imshow(img1)
+    axs[0].plot(points_selected[:, 0], points_selected[:, 1], '+r', markersize=15)
+    for k in range(points_selected.shape[0]):
+        axs[0].text(points_selected[k, 0] + 5, points_selected[k, 1] + 5, '{:.2f}'.format(flow_est_sparse_norm[k]), color='r')
+    axs[0].quiver(points_selected[:, 0], points_selected[:, 1], flow_est_sparse[:, 0], flow_est_sparse[:, 1], color='b', angles='xy', scale_units='xy', scale=0.05)
+    axs[0].title.set_text('Optical flow')
+    axs[1].imshow(img1)
+    axs[1].plot(points_selected[:, 0], points_selected[:, 1], '+r', markersize=15)
+    for k in range(points_selected.shape[0]):
+        axs[1].text(points_selected[k, 0] + 5, points_selected[k, 1] + 5, '{:.2f}'.format(error_sparse_norm[k]),
+                    color='r')
+    axs[1].quiver(points_selected[:, 0], points_selected[:, 1], error_sparse[:, 0], error_sparse[:, 1], color='b',
+               angles='xy', scale_units='xy', scale=0.05)
+
+    axs[1].title.set_text('Error of new estimation respect to GT')
+    plt.show()
 
