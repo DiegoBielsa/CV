@@ -16,6 +16,7 @@
 
 import numpy as np
 import cv2 as cv
+import interpolation as ip
 
 
 def read_image(filename: str, ):
@@ -40,7 +41,7 @@ def normalized_cross_correlation(patch: np.array, search_area: np.array) -> np.a
     norm0 = np.linalg.norm(i0_subs)
     i0_n = i0_subs / norm0
 
-    result = np.zeros(search_area.shape, dtype=np.float)
+    result = np.zeros(search_area.shape, dtype=float)
     margin_y = int(patch.shape[0]/2)
     margin_x = int(patch.shape[1]/2)
 
@@ -78,6 +79,89 @@ def seed_estimation_NCC_single_point(img1_gray, img2_gray, i_img, j_img, patch_h
 
     return i_flow, j_flow
 
+def lucasKanade(img0_gray, img1_gray, ini_flow: np.array, points_selected: np.array, patch_half_size: int = 5):
+    patch_size=(patch_half_size*2+1)*(patch_half_size*2+1)
+    #flow_shape = ini_flow.shape
+    #print(flow_shape)
+    new_flow = np.zeros(ini_flow.shape, dtype=float)
+    
+    threshold = 0.0001
+    for i in range(0, points_selected.shape[0]):
+        #print("i: ",i)
+        
+        orig_pixel = points_selected[i,:]
+        xmin = orig_pixel[0] - patch_half_size
+        ymin = orig_pixel[1] - patch_half_size
+        patch_coord_img0 = np.zeros((patch_half_size*2+1,patch_half_size*2+1,2),dtype=int)
+        patch_coord_img0_vector = np.zeros((patch_half_size*2+1,patch_half_size*2+1,2),dtype=float)
+        patch_coord_img0_vector = patch_coord_img0_vector.reshape(patch_size, 2)
+        for j in range(0, patch_half_size*2+1):
+            for k in range(0, patch_half_size*2+1):
+                patch_coord_img0[j, k, 0] = xmin + j
+                patch_coord_img0[j, k, 1] = ymin + k
+        patch_coord_img0 = patch_coord_img0.reshape(patch_size, 2)
+        patch_coord_img0_vector[:,0] = patch_coord_img0[:,1]
+        patch_coord_img0_vector[:,1] = patch_coord_img0[:,0]
+        patch_coord_img0_vector = np.array(patch_coord_img0_vector, dtype=float)
+        #print("patch_coord_img0: ",patch_coord_img0)
+        patch_0 = ip.int_bilineal(img0_gray, patch_coord_img0_vector)
+        
+        delta_u = np.ones(ini_flow.shape[0])
+        u = ini_flow[i]
+        
+        grads = ip.numerical_gradient(img0_gray, patch_coord_img0_vector)
+        
+        A = np.zeros((2,2), dtype= float)
+        b = np.zeros((2,1), dtype=float)
+        Ix = grads[:, 0]
+        Iy = grads[:, 1] 
+        A[0,0]= np.sum(Ix*Ix)
+        A[0,1]= np.sum(Ix*Iy)
+        A[1,0]= np.sum(Ix*Iy)
+        A[1,1]= np.sum(Iy*Iy)
+        
+        
+        detA = np.linalg.det(A)
+
+        if (detA!=0):
+            #print(delta_u)
+            #iteration = 0
+            patch_coord_img1_vector = np.zeros((patch_half_size*2+1,patch_half_size*2+1,2),dtype=float)
+            patch_coord_img1_vector = patch_coord_img1_vector.reshape(patch_size, 2)
+            while (np.sqrt(np.sum(delta_u ** 2)) >= threshold):
+                #iteration+=1
+                #print("Iteration: ",iteration)
+                patch_coord_img1 = patch_coord_img0 + u
+                
+                patch_coord_img1_vector[:,0] = patch_coord_img1[:,1]
+                patch_coord_img1_vector[:,1] = patch_coord_img1[:,0]
+                patch_coord_img1_vector = np.array(patch_coord_img1_vector, dtype=float)
+                #print(patch_coord_img1_vector[:, 0])
+                #print(patch_coord_img0_vector[:, 0])
+                patch_1 = ip.int_bilineal(img1_gray, patch_coord_img1_vector)
+                e = patch_1 - patch_0
+                b[0] = -np.sum(e * Ix)
+                b[1] = -np.sum(e * Iy) 
+                 
+                delta_u = np.linalg.solve(A, b)
+                delta_u = delta_u.reshape((2,))
+                #print("A: ",A)
+                #print("b: ",b)
+                #print("delta_u: ",delta_u)
+                
+                u = u + delta_u
+                
+                
+                #print("new u: ", u)
+            #print("def u: ", u)
+            new_flow[i] = u  
+            #print(new_flow)         
+        else:
+            print("Matrix A cannot be inverted")
+    
+    return new_flow
+
+
 if __name__ == '__main__':
     np.set_printoptions(precision=4, linewidth=1024, suppress=True)
 
@@ -100,4 +184,8 @@ if __name__ == '__main__':
         seed_optical_flow_sparse[k,:] = np.hstack((j_flow,i_flow))
 
     print(seed_optical_flow_sparse)
+    new_flow = lucasKanade(img1_gray, img2_gray, seed_optical_flow_sparse, points_selected, template_size_half)
+    print("new_flow: ", new_flow)
+    
+
 
